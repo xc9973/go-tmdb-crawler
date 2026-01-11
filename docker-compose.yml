@@ -9,7 +9,7 @@ services:
     container_name: tmdb-crawler
     restart: unless-stopped
     ports:
-      - "8888:8888"
+      - "8888:8080"
     volumes:
       # 数据持久化
       - ./data:/root/data
