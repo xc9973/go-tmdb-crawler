@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/go-tmdb-crawler/dto"
-	"github.com/yourusername/go-tmdb-crawler/models"
-	"github.com/yourusername/go-tmdb-crawler/repositories"
-	"github.com/yourusername/go-tmdb-crawler/services"
+	"github.com/xc9973/go-tmdb-crawler/dto"
+	"github.com/xc9973/go-tmdb-crawler/models"
+	"github.com/xc9973/go-tmdb-crawler/repositories"
+	"github.com/xc9973/go-tmdb-crawler/services"
 )
 
 // CrawlerAPI handles crawler control endpoints

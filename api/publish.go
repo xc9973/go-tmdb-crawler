@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/go-tmdb-crawler/dto"
-	"github.com/yourusername/go-tmdb-crawler/services"
+	"github.com/xc9973/go-tmdb-crawler/dto"
+	"github.com/xc9973/go-tmdb-crawler/services"
 )
 
 // PublishAPI handles publishing endpoints

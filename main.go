@@ -1,6 +1,6 @@
 package main
 
-import "github.com/yourusername/go-tmdb-crawler/cmd"
+import "github.com/xc9973/go-tmdb-crawler/cmd"
 
 func main() {
 	cmd.Execute()

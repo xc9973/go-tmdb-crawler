@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/robfig/cron/v3"
-	"github.com/yourusername/go-tmdb-crawler/utils"
+	"github.com/xc9973/go-tmdb-crawler/utils"
 )
 
 // Scheduler handles scheduled tasks

@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/yourusername/go-tmdb-crawler/config"
-	"github.com/yourusername/go-tmdb-crawler/models"
-	"github.com/yourusername/go-tmdb-crawler/repositories"
-	"github.com/yourusername/go-tmdb-crawler/utils"
+	"github.com/xc9973/go-tmdb-crawler/config"
+	"github.com/xc9973/go-tmdb-crawler/models"
+	"github.com/xc9973/go-tmdb-crawler/repositories"
+	"github.com/xc9973/go-tmdb-crawler/utils"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

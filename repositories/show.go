@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"github.com/yourusername/go-tmdb-crawler/models"
+	"github.com/xc9973/go-tmdb-crawler/models"
 	"gorm.io/gorm"
 )
 

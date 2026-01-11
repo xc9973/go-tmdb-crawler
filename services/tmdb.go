@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/parnurzeal/gorequest"
-	"github.com/yourusername/go-tmdb-crawler/dto"
+	"github.com/xc9973/go-tmdb-crawler/dto"
 )
 
 // TMDBService handles all TMDB API interactions

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/go-tmdb-crawler/models"
-	"github.com/yourusername/go-tmdb-crawler/repositories"
+	"github.com/xc9973/go-tmdb-crawler/models"
+	"github.com/xc9973/go-tmdb-crawler/repositories"
 )
 
 // CrawlerService handles crawling operations

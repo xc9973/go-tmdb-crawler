@@ -2,8 +2,8 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/go-tmdb-crawler/config"
-	"github.com/yourusername/go-tmdb-crawler/middleware"
+	"github.com/xc9973/go-tmdb-crawler/config"
+	"github.com/xc9973/go-tmdb-crawler/middleware"
 )
 
 // SetupRouter creates and configures the Gin router

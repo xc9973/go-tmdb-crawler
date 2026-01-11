@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/go-tmdb-crawler/repositories"
+	"github.com/xc9973/go-tmdb-crawler/repositories"
 )
 
 // PublisherService handles publishing to Telegraph

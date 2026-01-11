@@ -5,10 +5,10 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
-	"github.com/yourusername/go-tmdb-crawler/api"
-	"github.com/yourusername/go-tmdb-crawler/config"
-	"github.com/yourusername/go-tmdb-crawler/repositories"
-	"github.com/yourusername/go-tmdb-crawler/services"
+	"github.com/xc9973/go-tmdb-crawler/api"
+	"github.com/xc9973/go-tmdb-crawler/config"
+	"github.com/xc9973/go-tmdb-crawler/repositories"
+	"github.com/xc9973/go-tmdb-crawler/services"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
