@@ -1,0 +1,72 @@
+# Git相关
+.git
+.gitignore
+.gitattributes
+
+# 文档
+README.md
+*.md
+docs/
+tests/
+
+# 编辑器和IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 编译产物
+tmdb-crawler
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# 依赖和模块
+vendor/
+node_modules/
+
+# 配置文件(敏感信息)
+.env
+.env.local
+.env.*.local
+
+# 日志和数据
+logs/
+*.log
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 测试和覆盖率
+*.coverprofile
+coverage/
+coverage.html
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.bak
+
+# 备份文件
+*.backup
+*~
+
+# Python相关(如果有)
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.pytest_cache/
+
+# 构建缓存
+.built
+build/
+dist/

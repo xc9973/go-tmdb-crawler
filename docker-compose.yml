@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # Go应用服务
+  tmdb-crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tmdb-crawler
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      # 数据持久化
+      - ./data:/root/data
+      - ./logs:/root/logs
+      # 配置文件挂载
+      - ./.env:/root/.env:ro
+    environment:
+      # 应用环境
+      - APP_ENV=production
+      - APP_PORT=8080
+      - APP_LOG_LEVEL=info
+      
+      # 数据库配置
+      - DB_TYPE=sqlite
+      - DB_PATH=/root/data/tmdb.db
+      
+      # TMDB API (从环境变量或.env文件读取)
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - TMDB_BASE_URL=https://api.themoviedb.org/3
+      - TMDB_LANGUAGE=zh-CN
+      
+      # Telegraph配置
+      - TELEGRAPH_TOKEN=${TELEGRAPH_TOKEN}
+      - TELEGRAPH_AUTHOR_NAME=剧集更新助手
+      - TELEGRAPH_AUTHOR_URL=
+      
+      # 调度器配置
+      - ENABLE_SCHEDULER=true
+      - DAILY_CRON=0 8 * * *
+      
+      # 路径配置
+      - WEB_DIR=./web
+      - LOG_DIR=/root/logs
+      - DATA_DIR=/root/data
+      
+      # CORS配置
+      - CORS_ALLOWED_ORIGINS=*
+      - CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
+      - CORS_ALLOWED_HEADERS=*
+      
+      # 管理员认证Key (用于Cloudflare隧道访问)
+      - ADMIN_API_KEY=${ADMIN_API_KEY}
+      
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/crawler/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      
+    networks:
+      - tmdb-network
+      
+    labels:
+      - "com.tmdb.crawler.description=TMDB剧集爬取系统"
+      - "com.tmdb.crawler.version=2.0"
+
+  # 可选: PostgreSQL数据库(如果不用SQLite)
+  postgres:
+    image: postgres:15-alpine
+    container_name: tmdb-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=tmdb
+      - POSTGRES_USER=tmdb
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-tmdb_password}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - tmdb-network
+    profiles:
+      - with-postgres
+
+networks:
+  tmdb-network:
+    driver: bridge
+    name: tmdb-network
+
+volumes:
+  postgres-data:
+    name: tmdb-postgres-data

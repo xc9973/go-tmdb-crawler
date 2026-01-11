@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMDB剧集管理系统</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="css/custom.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-tv"></i> TMDB剧集管理系统
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">剧集列表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/today.html">今日更新</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logs.html">爬取日志</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2><i class="bi bi-list-ul"></i> 剧集列表</h2>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addShowModal">
+                            <i class="bi bi-plus-circle"></i> 添加剧集
+                        </button>
+                        <button class="btn btn-success" id="refreshAllBtn">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新全部
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索剧集名称...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="statusFilter">
+                    <option value="">全部状态</option>
+                    <option value="Returning Series">连载中</option>
+                    <option value="Ended">已完结</option>
+                    <option value="Canceled">已取消</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="pageSizeSelect">
+                    <option value="10">每页 10 条</option>
+                    <option value="25" selected>每页 25 条</option>
+                    <option value="50">每页 50 条</option>
+                    <option value="100">每页 100 条</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body py-2">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <strong>总计:</strong> <span id="totalCount">0</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>连载中:</strong> <span id="returningCount">0</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>已完结:</strong> <span id="endedCount">0</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>当前页:</strong> <span id="currentPageInfo">1/1</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-2">加载中...</p>
+        </div>
+
+        <!-- Shows Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped" id="showsTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" class="form-check-input" id="selectAll">
+                                        </th>
+                                        <th data-sort="id">ID <i class="bi bi-arrow-down-up"></i></th>
+                                        <th data-sort="name">名称 <i class="bi bi-arrow-down-up"></i></th>
+                                        <th data-sort="original_name">原名 <i class="bi bi-arrow-down-up"></i></th>
+                                        <th data-sort="status">状态 <i class="bi bi-arrow-down-up"></i></th>
+                                        <th data-sort="first_air_date">首播日期 <i class="bi bi-arrow-down-up"></i></th>
+                                        <th data-sort="vote_average">评分 <i class="bi bi-arrow-down-up"></i></th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="showsTableBody">
+                                    <!-- 动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <nav aria-label="Page navigation" id="paginationNav">
+                            <ul class="pagination justify-content-center" id="pagination">
+                                <!-- 动态生成 -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Actions -->
+        <div class="row mt-3" id="batchActions" style="display: none;">
+            <div class="col-12">
+                <div class="card border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-check-square"></i> 批量操作</h5>
+                        <p class="card-text">已选择 <strong id="selectedCount">0</strong> 项</p>
+                        <div class="btn-group">
+                            <button class="btn btn-warning" id="batchRefreshBtn">
+                                <i class="bi bi-arrow-clockwise"></i> 批量刷新
+                            </button>
+                            <button class="btn btn-danger" id="batchDeleteBtn">
+                                <i class="bi bi-trash"></i> 批量删除
+                            </button>
+                            <button class="btn btn-secondary" id="clearSelectionBtn">
+                                <i class="bi bi-x-square"></i> 取消选择
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Show Modal -->
+    <div class="modal fade" id="addShowModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 添加剧集</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addShowForm">
+                        <div class="mb-3">
+                            <label for="tmdbId" class="form-label">TMDB ID *</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="tmdbId" required>
+                                <button class="btn btn-outline-secondary" type="button" id="searchTmdbBtn">
+                                    <i class="bi bi-search"></i> 搜索
+                                </button>
+                            </div>
+                            <div class="form-text">输入TMDB ID,然后点击搜索按钮自动填充信息</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="showName" class="form-label">名称 *</label>
+                            <input type="text" class="form-control" id="showName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="originalName" class="form-label">原名</label>
+                            <input type="text" class="form-control" id="originalName">
+                        </div>
+                        <div class="mb-3">
+                            <label for="showStatus" class="form-label">状态</label>
+                            <select class="form-select" id="showStatus">
+                                <option value="">自动检测</option>
+                                <option value="Returning Series">连载中</option>
+                                <option value="Ended">已完结</option>
+                                <option value="Canceled">已取消</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="showOverview" class="form-label">简介</label>
+                            <textarea class="form-control" id="showOverview" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveShowBtn">
+                        <i class="bi bi-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="js/api.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/shows.js"></script>
+</body>
+</html>
