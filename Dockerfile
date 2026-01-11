@@ -16,8 +16,8 @@ RUN go mod download
 # 复制源代码
 COPY . .
 
-# 编译应用
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o tmdb-crawler main.go
+# 整理依赖并编译应用
+RUN go mod tidy && CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o tmdb-crawler main.go
 
 # 运行阶段
 FROM alpine:latest
