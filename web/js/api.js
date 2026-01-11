@@ -6,22 +6,75 @@
 class APIClient {
     constructor(baseURL = '/api/v1') {
         this.baseURL = baseURL;
+        this.apiKey = localStorage.getItem('admin_api_key') || '';
+    }
+
+    /**
+     * 设置API密钥
+     */
+    setApiKey(key) {
+        this.apiKey = key;
+        if (key) {
+            localStorage.setItem('admin_api_key', key);
+        } else {
+            localStorage.removeItem('admin_api_key');
+        }
+    }
+
+    /**
+     * 获取当前API密钥
+     */
+    getApiKey() {
+        return this.apiKey;
+    }
+
+    /**
+     * 检查是否已认证
+     */
+    isAuthenticated() {
+        return !!this.apiKey;
+    }
+
+    /**
+     * 清除认证
+     */
+    logout() {
+        this.setApiKey('');
     }
 
     /**
      * 通用请求方法
      */
     async request(url, options = {}) {
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+
+        // 添加认证头
+        if (this.apiKey) {
+            headers['X-Admin-API-Key'] = this.apiKey;
+        }
+
         const defaultOptions = {
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers,
         };
 
         const finalOptions = { ...defaultOptions, ...options };
+        // 合并headers
+        if (options.headers) {
+            finalOptions.headers = { ...headers, ...options.headers };
+        }
 
         try {
             const response = await fetch(`${this.baseURL}${url}`, finalOptions);
+            
+            // 处理401未认证
+            if (response.status === 401) {
+                // 触发认证失败事件
+                window.dispatchEvent(new CustomEvent('auth-required'));
+                throw new Error('需要登录认证');
+            }
+            
             const data = await response.json();
 
             if (!response.ok) {
@@ -32,6 +85,32 @@ class APIClient {
         } catch (error) {
             console.error('API请求错误:', error);
             throw error;
+        }
+    }
+
+    /**
+     * 验证API密钥是否有效
+     */
+    async validateApiKey(key) {
+        const tempHeaders = {
+            'Content-Type': 'application/json',
+            'X-Admin-API-Key': key,
+        };
+
+        try {
+            const response = await fetch(`${this.baseURL}/crawler/status`, {
+                method: 'GET',
+                headers: tempHeaders,
+            });
+            
+            if (response.status === 401) {
+                return false;
+            }
+            
+            return response.ok;
+        } catch (error) {
+            console.error('验证API密钥失败:', error);
+            return false;
         }
     }
 
@@ -200,7 +279,11 @@ class APIClient {
      * 获取今日更新Markdown
      */
     async getTodayMarkdown() {
-        const response = await fetch(`${this.baseURL}/publish/markdown/today`);
+        const headers = {};
+        if (this.apiKey) {
+            headers['X-Admin-API-Key'] = this.apiKey;
+        }
+        const response = await fetch(`${this.baseURL}/publish/markdown/today`, { headers });
         return response.text();
     }
 
@@ -208,7 +291,11 @@ class APIClient {
      * 获取剧集详情Markdown
      */
     async getShowMarkdown(id) {
-        const response = await fetch(`${this.baseURL}/publish/markdown/show/${id}`);
+        const headers = {};
+        if (this.apiKey) {
+            headers['X-Admin-API-Key'] = this.apiKey;
+        }
+        const response = await fetch(`${this.baseURL}/publish/markdown/show/${id}`, { headers });
         return response.text();
     }
 
@@ -216,7 +303,11 @@ class APIClient {
      * 获取本周更新Markdown
      */
     async getWeeklyMarkdown() {
-        const response = await fetch(`${this.baseURL}/publish/markdown/weekly`);
+        const headers = {};
+        if (this.apiKey) {
+            headers['X-Admin-API-Key'] = this.apiKey;
+        }
+        const response = await fetch(`${this.baseURL}/publish/markdown/weekly`, { headers });
         return response.text();
     }
 }
@@ -226,3 +317,168 @@ const api = new APIClient();
 
 // 导出到全局
 window.api = api;
+
+// ========== 认证UI组件 ==========
+
+/**
+ * 显示登录模态框
+ */
+function showLoginModal(message = '') {
+    // 检查是否已存在登录模态框
+    let modal = document.getElementById('loginModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'loginModal';
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-shield-lock me-2"></i>管理员登录
+                        </h5>
+                    </div>
+                    <div class="modal-body">
+                        <div id="loginError" class="alert alert-danger d-none"></div>
+                        <div id="loginMessage" class="alert alert-info d-none"></div>
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="apiKeyInput" class="form-label">API 密钥</label>
+                                <input type="password" class="form-control" id="apiKeyInput" 
+                                       placeholder="请输入管理员API密钥" required>
+                                <div class="form-text">
+                                    联系管理员获取API密钥
+                                </div>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="rememberKey" checked>
+                                <label class="form-check-label" for="rememberKey">
+                                    记住密钥
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" id="loginBtn">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>登录
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // 绑定登录事件
+        document.getElementById('loginBtn').addEventListener('click', handleLogin);
+        document.getElementById('apiKeyInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleLogin();
+            }
+        });
+    }
+    
+    // 显示消息
+    const msgEl = document.getElementById('loginMessage');
+    if (message) {
+        msgEl.textContent = message;
+        msgEl.classList.remove('d-none');
+    } else {
+        msgEl.classList.add('d-none');
+    }
+    
+    // 隐藏错误
+    document.getElementById('loginError').classList.add('d-none');
+    
+    // 显示模态框
+    const bsModal = new bootstrap.Modal(modal, {
+        backdrop: 'static',
+        keyboard: false
+    });
+    bsModal.show();
+}
+
+/**
+ * 处理登录
+ */
+async function handleLogin() {
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const rememberKey = document.getElementById('rememberKey');
+    const loginBtn = document.getElementById('loginBtn');
+    const errorEl = document.getElementById('loginError');
+    
+    const apiKey = apiKeyInput.value.trim();
+    
+    if (!apiKey) {
+        errorEl.textContent = '请输入API密钥';
+        errorEl.classList.remove('d-none');
+        return;
+    }
+    
+    // 禁用按钮
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>验证中...';
+    
+    try {
+        // 验证API密钥
+        const valid = await api.validateApiKey(apiKey);
+        
+        if (valid) {
+            // 保存密钥
+            if (rememberKey.checked) {
+                api.setApiKey(apiKey);
+            } else {
+                // 仅保存到内存
+                api.apiKey = apiKey;
+            }
+            
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+            modal.hide();
+            
+            // 刷新页面或重新加载数据
+            window.dispatchEvent(new CustomEvent('auth-success'));
+            
+            // 刷新页面
+            location.reload();
+        } else {
+            errorEl.textContent = 'API密钥无效,请检查后重试';
+            errorEl.classList.remove('d-none');
+        }
+    } catch (error) {
+        errorEl.textContent = '验证失败: ' + error.message;
+        errorEl.classList.remove('d-none');
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>登录';
+    }
+}
+
+/**
+ * 检查认证状态,如果未认证则显示登录框
+ */
+async function checkAuth() {
+    if (!api.isAuthenticated()) {
+        showLoginModal('请先登录以访问管理功能');
+        return false;
+    }
+    
+    // 验证现有密钥是否仍然有效
+    const valid = await api.validateApiKey(api.getApiKey());
+    if (!valid) {
+        api.logout();
+        showLoginModal('登录已过期,请重新登录');
+        return false;
+    }
+    
+    return true;
+}
+
+// 监听认证需求事件
+window.addEventListener('auth-required', () => {
+    showLoginModal('需要登录认证才能继续操作');
+});
+
+// 导出认证函数
+window.showLoginModal = showLoginModal;
+window.checkAuth = checkAuth;
