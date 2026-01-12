@@ -113,20 +113,27 @@ class ShowModal {
         try {
             // 调用爬虫API搜索TMDB
             const response = await api.crawlShow(parseInt(tmdbId));
+            console.debug('[TMDB搜索] crawlShow响应', response);
             
-            if (response.code === 0 && response.data) {
-                const show = response.data;
-                
-                // 自动填充表单
-                document.getElementById('showName').value = show.name || '';
-                document.getElementById('originalName').value = show.original_name || '';
-                document.getElementById('showStatus').value = show.status || '';
-                document.getElementById('showOverview').value = show.overview || '';
-                
-                showsPage.showSuccess('TMDB搜索成功,已自动填充信息');
-            } else {
-                showsPage.showError('TMDB搜索失败: ' + response.message);
+            if (response.code !== 0) {
+                showsPage.showError('TMDB搜索失败: ' + (response.message || '未知错误'));
+                return;
             }
+
+            if (!response.data) {
+                showsPage.showInfo('TMDB搜索成功，但未返回剧集信息，请稍后重试或手动填写');
+                return;
+            }
+
+            const show = response.data;
+
+            // 自动填充表单
+            document.getElementById('showName').value = show.name || '';
+            document.getElementById('originalName').value = show.original_name || '';
+            document.getElementById('showStatus').value = show.status || '';
+            document.getElementById('showOverview').value = show.overview || '';
+
+            showsPage.showSuccess('TMDB搜索成功,已自动填充信息');
         } catch (error) {
             showsPage.showError('TMDB搜索失败: ' + error.message);
         } finally {
