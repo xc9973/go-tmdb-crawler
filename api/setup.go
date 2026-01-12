@@ -57,9 +57,18 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Set timezone helper for episode repository
 	episodeRepo.SetTimezoneHelper(timezoneHelper)
 
-	if err := db.AutoMigrate(&models.Session{}); err != nil {
-		log.Fatalf("Failed to migrate session table: %v", err)
+	// Auto migrate all database tables
+	if err := db.AutoMigrate(
+		&models.Show{},
+		&models.Episode{},
+		&models.CrawlLog{},
+		&models.CrawlTask{},
+		&models.TelegraphPost{},
+		&models.Session{},
+	); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
 	}
+	log.Println("Database migration completed successfully")
 
 	// 初始化认证服务
 	authService := services.NewAuthService(cfg.Auth.SecretKey, db)
