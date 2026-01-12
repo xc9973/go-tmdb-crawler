@@ -341,8 +341,14 @@ class ShowsPage {
             this.showLoading(true);
             const response = await api.searchTMDB(tmdbId);
 
-            if (response.code === 0 && response.data.results && response.data.results.length > 0) {
+            if (response.code === 0 && response.data && response.data.results && Array.isArray(response.data.results) && response.data.results.length > 0) {
                 const show = response.data.results[0];
+                
+                // 检查 show 对象是否存在必要的字段
+                if (!show || (!show.name && !show.original_name)) {
+                    this.showError('TMDB搜索成功，但未返回剧集信息，请稍后重试或手动填写');
+                    return;
+                }
                 
                 // 填充表单
                 document.getElementById('showName').value = show.name || '';
