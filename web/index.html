@@ -288,7 +288,14 @@
         // 页面加载时检查认证状态
         document.addEventListener('DOMContentLoaded', async function() {
             // 检查认证状态
-            await api.checkAuth();
+            const isAuthenticated = await api.checkAuth();
+            
+            if (!isAuthenticated) {
+                // 未登录，重定向到欢迎页面
+                window.location.href = '/welcome.html';
+                return;
+            }
+            
             updateAuthUI();
         });
     </script>

@@ -50,13 +50,13 @@ class APIClient {
             
             if (response.ok && data.code === 200) {
                 this.isAuthenticated = true;
-                return { success: true, data: data.data };
+                return data; // 返回完整的响应数据
             }
             
-            return { success: false, message: data.message };
+            return data; // 返回完整的响应数据，包含错误信息
         } catch (error) {
             console.error('登录失败:', error);
-            return { success: false, message: error.message };
+            return { code: 500, message: error.message };
         }
     }
 

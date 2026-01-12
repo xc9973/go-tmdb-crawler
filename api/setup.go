@@ -34,6 +34,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Serve static files
 	router.Static("/css", cfg.Paths.Web+"/css")
 	router.Static("/js", cfg.Paths.Web+"/js")
+	router.StaticFile("/welcome.html", cfg.Paths.Web+"/welcome.html")
 	router.StaticFile("/", cfg.Paths.Web+"/index.html")
 	router.StaticFile("/today.html", cfg.Paths.Web+"/today.html")
 	router.StaticFile("/logs.html", cfg.Paths.Web+"/logs.html")
