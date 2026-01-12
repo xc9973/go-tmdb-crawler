@@ -41,6 +41,29 @@ func NewCrawlerAPI(
 	}
 }
 
+// CrawlShow handles POST /api/v1/crawler/show/:tmdb_id
+func (api *CrawlerAPI) CrawlShow(c *gin.Context) {
+	tmdbIDStr := c.Param("tmdb_id")
+	tmdbID, err := strconv.Atoi(tmdbIDStr)
+	if err != nil || tmdbID <= 0 {
+		c.JSON(http.StatusBadRequest, dto.BadRequest("invalid tmdb_id"))
+		return
+	}
+
+	if err := api.crawler.CrawlShow(tmdbID); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
+		return
+	}
+
+	show, err := api.showRepo.GetByTmdbID(tmdbID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError("failed to load show after crawl"))
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.SuccessWithMessage("Show crawled successfully", show))
+}
+
 // RefreshAll handles POST /api/v1/crawler/refresh-all
 func (api *CrawlerAPI) RefreshAll(c *gin.Context) {
 	if api.taskManager == nil {

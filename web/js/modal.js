@@ -114,7 +114,7 @@ class ShowModal {
             // 调用爬虫API搜索TMDB
             const response = await api.crawlShow(parseInt(tmdbId));
             
-            if (response.code === 0) {
+            if (response.code === 0 && response.data) {
                 const show = response.data;
                 
                 // 自动填充表单

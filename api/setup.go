@@ -119,7 +119,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		admin.POST("/shows/:id/refresh", showAPI.RefreshShow)
 
 		// Crawler (写操作和日志)
-		admin.POST("/crawler/show/:tmdb_id", crawlerAPI.CrawlByStatus)
+		admin.POST("/crawler/show/:tmdb_id", crawlerAPI.CrawlShow)
 		admin.POST("/crawler/refresh-all", crawlerAPI.RefreshAll)
 		admin.POST("/crawler/crawl-by-status", crawlerAPI.CrawlByStatus)
 		admin.GET("/crawler/logs", crawlerAPI.GetCrawlLogs)
