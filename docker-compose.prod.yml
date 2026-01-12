@@ -1,0 +1,283 @@
+# Production Docker Compose Configuration
+# Version: 2.0
+# Created: 2026-01-12
+# Description: Optimized configuration for production deployment
+
+version: '3.8'
+
+services:
+  # ============================================
+  # Main Application Service
+  # ============================================
+  tmdb-crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-2.0.0}
+        BUILD_TIME: ${BUILD_TIME:-}
+        COMMIT_SHA: ${COMMIT_SHA:-}
+    image: tmdb-crawler:${BUILD_VERSION:-latest}
+    container_name: tmdb-crawler-prod
+    restart: always
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    ports:
+      - "${APP_PORT:-8888}:8080"
+    
+    volumes:
+      # Data persistence
+      - tmdb-data:/app/data
+      - tmdb-logs:/app/logs
+      # Configuration (read-only for security)
+      - ./.env:/app/.env:ro
+    
+    environment:
+      # Application
+      - APP_ENV=production
+      - APP_PORT=8080
+      - APP_LOG_LEVEL=${LOG_LEVEL:-info}
+      
+      # Database
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - DB_PATH=/app/data/tmdb.db
+      
+      # PostgreSQL (if enabled)
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-tmdb}
+      - DB_USER=${DB_USER:-tmdb}
+      - DB_PASSWORD=${DB_PASSWORD}
+      
+      # TMDB API
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - TMDB_BASE_URL=https://api.themoviedb.org/3
+      - TMDB_LANGUAGE=zh-CN
+      - TMDB_TIMEOUT=30s
+      
+      # Telegraph
+      - TELEGRAPH_TOKEN=${TELEGRAPH_TOKEN}
+      - TELEGRAPH_AUTHOR_NAME=${TELEGRAPH_AUTHOR_NAME:-剧集更新助手}
+      - TELEGRAPH_AUTHOR_URL=${TELEGRAPH_AUTHOR_URL:-}
+      
+      # Scheduler
+      - ENABLE_SCHEDULER=${ENABLE_SCHEDULER:-true}
+      - DAILY_CRON=${DAILY_CRON:-0 8 * * *}
+      
+      # Performance
+      - GIN_MODE=release
+      - CACHE_ENABLED=${CACHE_ENABLED:-true}
+      - CACHE_TTL=${CACHE_TTL:-300}
+      - MAX_CONCURRENT_REQUESTS=${MAX_CONCURRENT_REQUESTS:-100}
+      
+      # Security
+      - ADMIN_API_KEY=${ADMIN_API_KEY}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+      - CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
+      - CORS_ALLOWED_HEADERS=*
+      
+      # Paths
+      - WEB_DIR=/app/web
+      - LOG_DIR=/app/logs
+      - DATA_DIR=/app/data
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/crawler/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service,version"
+        tag: "tmdb-crawler"
+    
+    networks:
+      - tmdb-network
+    
+    labels:
+      - "com.tmdb.crawler.description=TMDB剧集爬取系统 - Production"
+      - "com.tmdb.crawler.version=${BUILD_VERSION:-2.0.0}"
+      - "com.tmdb.crawler.managed-by=docker-compose"
+
+  # ============================================
+  # PostgreSQL Database (Optional)
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: tmdb-postgres-prod
+    restart: always
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    environment:
+      - POSTGRES_DB=${DB_NAME:-tmdb}
+      - POSTGRES_USER=${DB_USER:-tmdb}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    
+    # Performance tuning
+    command: 
+      - postgres
+      - -c
+      - max_connections=100
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - work_mem=2621kB
+      - -c
+      - min_wal_size=1GB
+      - -c
+      - max_wal_size=4GB
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tmdb} -d ${DB_NAME:-tmdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    networks:
+      - tmdb-network
+    
+    profiles:
+      - with-postgres
+    
+    labels:
+      - "com.tmdb.crawler.service=postgres"
+
+  # ============================================
+  # Nginx Reverse Proxy (Optional)
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: tmdb-nginx
+    restart: always
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - tmdb-logs:/var/log/nginx
+    
+    depends_on:
+      - tmdb-crawler
+    
+    networks:
+      - tmdb-network
+    
+    profiles:
+      - with-nginx
+    
+    labels:
+      - "com.tmdb.crawler.service=nginx"
+
+  # ============================================
+  # Redis Cache (Optional)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: tmdb-redis
+    restart: always
+    
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    
+    volumes:
+      - redis-data:/data
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    
+    networks:
+      - tmdb-network
+    
+    profiles:
+      - with-redis
+    
+    labels:
+      - "com.tmdb.crawler.service=redis"
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  tmdb-network:
+    driver: bridge
+    name: tmdb-network-prod
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  tmdb-data:
+    name: tmdb-data-prod
+    driver: local
+  
+  tmdb-logs:
+    name: tmdb-logs-prod
+    driver: local
+  
+  postgres-data:
+    name: tmdb-postgres-data-prod
+    driver: local
+  
+  redis-data:
+    name: tmdb-redis-data-prod
+    driver: local

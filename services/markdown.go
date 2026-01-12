@@ -61,6 +61,16 @@ func (s *MarkdownService) GenerateWeeklyUpdates() (string, error) {
 	return s.GenerateDateRangeUpdates(startDate, today, episodes), nil
 }
 
+// GenerateDateRange generates Markdown content for a date range
+func (s *MarkdownService) GenerateDateRange(startDate, endDate time.Time) (string, error) {
+	episodes, err := s.episodeRepo.GetByDateRange(startDate, endDate)
+	if err != nil {
+		return "", fmt.Errorf("failed to get episodes: %w", err)
+	}
+
+	return s.GenerateDateRangeUpdates(startDate, endDate, episodes), nil
+}
+
 // GenerateUpdateList generates Markdown content for a list of episodes
 func (s *MarkdownService) GenerateUpdateList(episodes []*models.Episode) string {
 	var builder strings.Builder

@@ -52,6 +52,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	episodeRepo := repositories.NewEpisodeRepository(db)
 	crawlLogRepo := repositories.NewCrawlLogRepository(db)
 	crawlTaskRepo := repositories.NewCrawlTaskRepository(db)
+	telegraphPostRepo := repositories.NewTelegraphPostRepository(db)
 
 	// Set timezone helper for episode repository
 	episodeRepo.SetTimezoneHelper(timezoneHelper)
@@ -73,16 +74,21 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	authHandler := NewAuthHandler(authService, middleware.GetAdminAuth())
 
 	telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
-	publisher := services.NewPublisherService(telegraph, showRepo, episodeRepo, timezoneHelper)
+	publisher := services.NewPublisherService(telegraph, showRepo, episodeRepo, telegraphPostRepo, timezoneHelper)
 	tmdb := services.MustTMDBService(cfg.TMDB.APIKey, cfg.TMDB.BaseURL, cfg.TMDB.Language)
 	crawler := services.NewCrawlerService(tmdb, showRepo, episodeRepo, crawlLogRepo, crawlTaskRepo)
 	taskManager := services.NewTaskManager(crawlTaskRepo, crawler)
 
-	showAPI := NewShowAPI(showRepo, crawler)
+	// Initialize scheduler
+	logger := utils.NewLogger(cfg.App.LogLevel, cfg.Paths.Log)
+	scheduler := services.NewScheduler(crawler, publisher, logger)
+
+	showAPI := NewShowAPI(showRepo, episodeRepo, crawler)
 	crawlerAPI := NewCrawlerAPI(crawler, showRepo, crawlLogRepo, episodeRepo, taskManager)
 	markdownService := services.NewMarkdownService(episodeRepo, showRepo)
 	markdownService.SetTimezoneHelper(timezoneHelper)
 	publishAPI := NewPublishAPI(publisher, markdownService)
+	schedulerAPI := NewSchedulerAPI(scheduler)
 
 	// API routes
 	api := router.Group("/api/v1")
@@ -138,6 +144,28 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		admin.GET("/publish/markdown/show/:id", publishAPI.GenerateMarkdownShow)
 		admin.GET("/publish/markdown/range", publishAPI.GenerateMarkdownRange)
 		admin.GET("/publish/markdown/weekly", publishAPI.GenerateMarkdownWeekly)
+
+		// Scheduler
+		admin.GET("/scheduler/status", schedulerAPI.GetStatus)
+		admin.GET("/scheduler/next-runs", schedulerAPI.GetNextRunTimes)
+		admin.POST("/scheduler/start", schedulerAPI.StartScheduler)
+		admin.POST("/scheduler/stop", schedulerAPI.StopScheduler)
+		admin.POST("/scheduler/crawl-now", schedulerAPI.RunCrawlNow)
+		admin.POST("/scheduler/publish-now", schedulerAPI.RunPublishNow)
+		admin.POST("/scheduler/crawl/:id", schedulerAPI.RunManualCrawl)
+		admin.POST("/scheduler/publish/:id", schedulerAPI.RunManualPublish)
+		admin.GET("/scheduler/timeouts", schedulerAPI.GetTimeouts)
+		admin.PUT("/scheduler/timeouts", schedulerAPI.SetTimeouts)
+	}
+
+	// Start scheduler if enabled
+	if cfg.Scheduler.Enabled {
+		log.Println("Starting scheduler...")
+		if err := scheduler.Start(); err != nil {
+			log.Printf("Failed to start scheduler: %v", err)
+		} else {
+			log.Println("Scheduler started successfully")
+		}
 	}
 
 	return router

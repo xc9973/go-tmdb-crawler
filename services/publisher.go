@@ -1,19 +1,24 @@
 package services
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/xc9973/go-tmdb-crawler/models"
 	"github.com/xc9973/go-tmdb-crawler/repositories"
 	"github.com/xc9973/go-tmdb-crawler/utils"
 )
 
 // PublisherService handles publishing to Telegraph
 type PublisherService struct {
-	telegraph      *TelegraphService
-	showRepo       repositories.ShowRepository
-	episodeRepo    repositories.EpisodeRepository
-	timezoneHelper *utils.TimezoneHelper
+	telegraph         *TelegraphService
+	showRepo          repositories.ShowRepository
+	episodeRepo       repositories.EpisodeRepository
+	telegraphPostRepo repositories.TelegraphPostRepository
+	timezoneHelper    *utils.TimezoneHelper
 }
 
 // NewPublisherService creates a new publisher service instance
@@ -21,14 +26,27 @@ func NewPublisherService(
 	telegraph *TelegraphService,
 	showRepo repositories.ShowRepository,
 	episodeRepo repositories.EpisodeRepository,
+	telegraphPostRepo repositories.TelegraphPostRepository,
 	timezoneHelper *utils.TimezoneHelper,
 ) *PublisherService {
 	return &PublisherService{
-		telegraph:      telegraph,
-		showRepo:       showRepo,
-		episodeRepo:    episodeRepo,
-		timezoneHelper: timezoneHelper,
+		telegraph:         telegraph,
+		showRepo:          showRepo,
+		episodeRepo:       episodeRepo,
+		telegraphPostRepo: telegraphPostRepo,
+		timezoneHelper:    timezoneHelper,
 	}
+}
+
+// generateContentHash generates a SHA256 hash from content nodes
+func generateContentHash(content []Node) string {
+	data, err := json.Marshal(content)
+	if err != nil {
+		return ""
+	}
+
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:])
 }
 
 // PublishResult represents the result of a publish operation
@@ -67,6 +85,25 @@ func (s *PublisherService) PublishTodayUpdates() (*PublishResult, error) {
 	// Generate content
 	content := s.telegraph.GenerateUpdateListContent(episodes)
 
+	// Generate content hash for deduplication
+	contentHash := generateContentHash(content)
+
+	// Check if same content already exists
+	if s.telegraphPostRepo != nil {
+		existingPost, err := s.telegraphPostRepo.GetByContentHash(contentHash)
+		if err == nil && existingPost != nil {
+			// Return existing post
+			return &PublishResult{
+				Success:       true,
+				URL:           existingPost.TelegraphURL,
+				Path:          existingPost.TelegraphPath,
+				Title:         existingPost.Title,
+				ShowsCount:    existingPost.ShowsCount,
+				EpisodesCount: existingPost.EpisodesCount,
+			}, nil
+		}
+	}
+
 	// Generate tags
 	tags := []string{"剧集", "更新", "TV Shows", today}
 
@@ -83,6 +120,19 @@ func (s *PublisherService) PublishTodayUpdates() (*PublishResult, error) {
 	showMap := make(map[uint]bool)
 	for _, ep := range episodes {
 		showMap[ep.ShowID] = true
+	}
+
+	// Save to database if repository is available
+	if s.telegraphPostRepo != nil {
+		post := &models.TelegraphPost{
+			TelegraphPath: page.Path,
+			TelegraphURL:  page.URL,
+			Title:         title,
+			ContentHash:   contentHash,
+			ShowsCount:    len(showMap),
+			EpisodesCount: len(episodes),
+		}
+		_ = s.telegraphPostRepo.Create(post)
 	}
 
 	return &PublishResult{
@@ -121,6 +171,25 @@ func (s *PublisherService) PublishDateRange(startDate, endDate time.Time) (*Publ
 	// Generate content
 	content := s.telegraph.GenerateUpdateListContent(episodes)
 
+	// Generate content hash for deduplication
+	contentHash := generateContentHash(content)
+
+	// Check if same content already exists
+	if s.telegraphPostRepo != nil {
+		existingPost, err := s.telegraphPostRepo.GetByContentHash(contentHash)
+		if err == nil && existingPost != nil {
+			// Return existing post
+			return &PublishResult{
+				Success:       true,
+				URL:           existingPost.TelegraphURL,
+				Path:          existingPost.TelegraphPath,
+				Title:         existingPost.Title,
+				ShowsCount:    existingPost.ShowsCount,
+				EpisodesCount: existingPost.EpisodesCount,
+			}, nil
+		}
+	}
+
 	// Generate tags
 	tags := []string{"剧集", "更新", "TV Shows"}
 
@@ -137,6 +206,19 @@ func (s *PublisherService) PublishDateRange(startDate, endDate time.Time) (*Publ
 	showMap := make(map[uint]bool)
 	for _, ep := range episodes {
 		showMap[ep.ShowID] = true
+	}
+
+	// Save to database if repository is available
+	if s.telegraphPostRepo != nil {
+		post := &models.TelegraphPost{
+			TelegraphPath: page.Path,
+			TelegraphURL:  page.URL,
+			Title:         title,
+			ContentHash:   contentHash,
+			ShowsCount:    len(showMap),
+			EpisodesCount: len(episodes),
+		}
+		_ = s.telegraphPostRepo.Create(post)
 	}
 
 	return &PublishResult{
@@ -182,6 +264,25 @@ func (s *PublisherService) PublishShow(showID uint) (*PublishResult, error) {
 	// Generate content
 	content := s.telegraph.GenerateShowContent(show, episodes)
 
+	// Generate content hash for deduplication
+	contentHash := generateContentHash(content)
+
+	// Check if same content already exists
+	if s.telegraphPostRepo != nil {
+		existingPost, err := s.telegraphPostRepo.GetByContentHash(contentHash)
+		if err == nil && existingPost != nil {
+			// Return existing post
+			return &PublishResult{
+				Success:       true,
+				URL:           existingPost.TelegraphURL,
+				Path:          existingPost.TelegraphPath,
+				Title:         existingPost.Title,
+				ShowsCount:    existingPost.ShowsCount,
+				EpisodesCount: existingPost.EpisodesCount,
+			}, nil
+		}
+	}
+
 	// Generate tags
 	tags := []string{"剧集", show.Name, "TV Shows"}
 	if show.Status != "" {
@@ -195,6 +296,19 @@ func (s *PublisherService) PublishShow(showID uint) (*PublishResult, error) {
 			Success: false,
 			Error:   fmt.Errorf("failed to create page: %w", err),
 		}, err
+	}
+
+	// Save to database if repository is available
+	if s.telegraphPostRepo != nil {
+		post := &models.TelegraphPost{
+			TelegraphPath: page.Path,
+			TelegraphURL:  page.URL,
+			Title:         title,
+			ContentHash:   contentHash,
+			ShowsCount:    1,
+			EpisodesCount: len(episodes),
+		}
+		_ = s.telegraphPostRepo.Create(post)
 	}
 
 	return &PublishResult{

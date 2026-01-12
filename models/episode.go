@@ -10,23 +10,23 @@ import (
 // Episode represents a single episode of a TV show
 type Episode struct {
 	ID            uint       `gorm:"primaryKey" json:"id"`
-	ShowID        uint       `gorm:"not null;index" json:"show_id"`
-	SeasonNumber  int        `gorm:"not null" json:"season_number"`
-	EpisodeNumber int        `gorm:"not null" json:"episode_number"`
+	ShowID        uint       `gorm:"not null;index:idx_show_id,priority:1" json:"show_id"`
+	SeasonNumber  int        `gorm:"not null;index:idx_show_id,priority:2;index:idx_season_number" json:"season_number"`
+	EpisodeNumber int        `gorm:"not null;index:idx_show_id,priority:3" json:"episode_number"`
 	Name          string     `gorm:"size:255" json:"name"`
 	Overview      string     `gorm:"type:text" json:"overview"`
-	AirDate       *time.Time `gorm:"index" json:"air_date"`
+	AirDate       *time.Time `gorm:"index:idx_air_date" json:"air_date"`
 	StillPath     string     `gorm:"size:512" json:"still_path"`
-	Runtime       int        `json:"runtime"` // in minutes
-	VoteAverage   float32    `gorm:"type:decimal(3,1)" json:"vote_average"`
-	VoteCount     int        `json:"vote_count"`
+	Runtime       int        `gorm:"default:0" json:"runtime"` // in minutes
+	VoteAverage   float32    `gorm:"type:decimal(3,1);default:0.0" json:"vote_average"`
+	VoteCount     int        `gorm:"default:0" json:"vote_count"`
 
 	// Timestamps
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// Relationships
-	Show *Show `gorm:"foreignKey:ShowID" json:"show,omitempty"`
+	Show *Show `gorm:"foreignKey:ShowID;constraint:OnDelete:CASCADE" json:"show,omitempty"`
 }
 
 // EpisodeUniqueIndex defines the unique constraint for episodes
@@ -83,5 +83,41 @@ func (e *Episode) BeforeCreate(tx *gorm.DB) error {
 	now := time.Now()
 	e.CreatedAt = now
 	e.UpdatedAt = now
+	return e.Validate()
+}
+
+// BeforeUpdate hook
+func (e *Episode) BeforeUpdate(tx *gorm.DB) error {
+	e.UpdatedAt = time.Now()
+	return e.Validate()
+}
+
+// Validate validates the episode data
+func (e *Episode) Validate() error {
+	if e.ShowID == 0 {
+		return fmt.Errorf("show ID cannot be empty")
+	}
+	if e.SeasonNumber < 0 {
+		return fmt.Errorf("season number cannot be negative")
+	}
+	if e.EpisodeNumber < 0 {
+		return fmt.Errorf("episode number cannot be negative")
+	}
 	return nil
+}
+
+// GetAirDateFormatted returns the air date in a formatted string
+func (e *Episode) GetAirDateFormatted() string {
+	if e.AirDate == nil {
+		return "TBD"
+	}
+	return e.AirDate.Format("2006-01-02")
+}
+
+// GetAirDateFormattedInTimezone returns the air date in a formatted string for the given timezone
+func (e *Episode) GetAirDateFormattedInTimezone(loc *time.Location) string {
+	if e.AirDate == nil {
+		return "TBD"
+	}
+	return e.AirDate.In(loc).Format("2006-01-02")
 }

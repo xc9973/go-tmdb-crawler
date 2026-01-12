@@ -113,7 +113,8 @@ class ShowModal {
         try {
             // 调用爬虫API搜索TMDB
             const response = await api.crawlShow(parseInt(tmdbId));
-            console.debug('[TMDB搜索] crawlShow响应', response);
+            console.log('[TMDB搜索] 完整响应:', JSON.stringify(response, null, 2));
+            console.log('[TMDB搜索] code:', response.code, 'message:', response.message, 'data:', response.data);
             
             if (response.code !== 0) {
                 showsPage.showError('TMDB搜索失败: ' + (response.message || '未知错误'));

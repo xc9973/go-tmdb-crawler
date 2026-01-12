@@ -209,6 +209,13 @@ class APIClient {
         return this.get('/shows/returning');
     }
 
+    /**
+     * 获取剧集集数列表
+     */
+    async getShowEpisodes(id) {
+        return this.get(`/shows/${id}/episodes`);
+    }
+
     // ========== 爬虫控制 API ==========
 
     /**
@@ -242,12 +249,29 @@ class APIClient {
     }
    
     /**
-     * 搜索TMDB剧集
-     */
+      * 搜索TMDB剧集
+      */
     async searchTMDB(query, page = 1) {
     	return this.get('/crawler/search/tmdb', { query, page });
     }
-   
+
+    /**
+     * 获取今日更新 (集数级别)
+     */
+    async getTodayUpdates() {
+        return this.get('/calendar/today');
+    }
+
+    /**
+     * 获取日期范围更新
+     */
+    async getDateRangeUpdates(startDate, endDate) {
+        return this.get('/crawler/updates', {
+            start_date: startDate,
+            end_date: endDate
+        });
+    }
+    
     // ========== 发布 API ==========
 
     /**

@@ -60,12 +60,37 @@ class TodayPage {
         this.showLoading(true);
 
         try {
-            // 获取今日更新的剧集
-            const response = await api.getShows(1, 100, '', '');
+            // 使用今日更新API获取集数级别的更新
+            const response = await api.getTodayUpdates();
             
             if (response.code === 0) {
-                // 过滤出今日更新的剧集
-                this.shows = this.filterTodayShows(response.data.items || []);
+                const updates = response.data || [];
+                
+                // 按剧集分组
+                const showMap = new Map();
+                
+                updates.forEach(update => {
+                    const showId = update.show_id;
+                    
+                    if (!showMap.has(showId)) {
+                        showMap.set(showId, {
+                            id: showId,
+                            name: update.show_name,
+                            poster_path: update.still_path,
+                            status: 'Returning Series',
+                            vote_average: update.vote_average,
+                            first_air_date: update.air_date,
+                            episode_count: 0,
+                            episodes: []
+                        });
+                    }
+                    
+                    const show = showMap.get(showId);
+                    show.episodes.push(update);
+                    show.episode_count++;
+                });
+                
+                this.shows = Array.from(showMap.values());
                 this.renderShows();
                 this.updateStats();
             } else {
@@ -76,12 +101,6 @@ class TodayPage {
         } finally {
             this.showLoading(false);
         }
-    }
-
-    filterTodayShows(shows) {
-        // 这里应该根据实际API返回的更新时间过滤
-        // 暂时返回所有剧集作为示例
-        return shows;
     }
 
     renderShows() {
@@ -103,21 +122,33 @@ class TodayPage {
         this.shows.forEach(show => {
             const col = document.createElement('div');
             col.className = 'col-md-6 col-lg-4 mb-3';
+            
+            // 构建集数列表HTML
+            let episodesHTML = '';
+            if (show.episodes && show.episodes.length > 0) {
+                episodesHTML = '<div class="mt-2"><small class="text-muted">更新集数:</small><ul class="list-unstyled mb-0 small">';
+                show.episodes.slice(0, 5).forEach(ep => {
+                    const episodeCode = `S${ep.season_number}E${ep.episode_number}`;
+                    episodesHTML += `<li><i class="bi bi-play-circle"></i> ${episodeCode} - ${this.escapeHtml(ep.name)}</li>`;
+                });
+                if (show.episodes.length > 5) {
+                    episodesHTML += `<li class="text-muted">...还有 ${show.episodes.length - 5} 集</li>`;
+                }
+                episodesHTML += '</ul></div>';
+            }
+            
             col.innerHTML = `
                 <div class="card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-start">
-                            <img src="${this.getPosterUrl(show.poster_path)}" 
-                                 alt="${show.name}" 
-                                 class="rounded me-3" 
+                            <img src="${this.getPosterUrl(show.poster_path)}"
+                                 alt="${show.name}"
+                                 class="rounded me-3"
                                  style="width: 80px; height: 120px; object-fit: cover;">
                             <div class="flex-grow-1">
                                 <h5 class="card-title">${this.escapeHtml(show.name)}</h5>
-                                <p class="card-text text-muted small mb-2">
-                                    ${this.escapeHtml(show.original_name || '')}
-                                </p>
                                 <div class="mb-2">
-                                    ${this.renderStatusBadge(show.status)}
+                                    <span class="badge bg-primary">${show.episode_count} 集更新</span>
                                     ${show.vote_average ? `<span class="badge bg-warning text-dark">
                                         ${show.vote_average.toFixed(1)} <i class="bi bi-star-fill"></i>
                                     </span>` : ''}
@@ -125,6 +156,7 @@ class TodayPage {
                                 <p class="card-text small text-muted">
                                     <i class="bi bi-calendar"></i> ${this.formatDate(show.first_air_date)}
                                 </p>
+                                ${episodesHTML}
                             </div>
                         </div>
                     </div>
@@ -145,15 +177,13 @@ class TodayPage {
     }
 
     updateStats() {
-        const total = this.shows.length;
-        const newShows = this.shows.filter(s => s.status === 'Returning Series').length;
-        const returning = this.shows.filter(s => s.status === 'Ended').length;
-        const ended = this.shows.filter(s => s.status === 'Canceled').length;
-
-        document.getElementById('totalCount').textContent = total;
-        document.getElementById('newCount').textContent = newShows;
-        document.getElementById('returningCount').textContent = returning;
-        document.getElementById('endedCount').textContent = ended;
+        const totalShows = this.shows.length;
+        const totalEpisodes = this.shows.reduce((sum, show) => sum + (show.episode_count || 0), 0);
+        
+        document.getElementById('totalCount').textContent = totalShows;
+        document.getElementById('newCount').textContent = totalEpisodes;
+        document.getElementById('returningCount').textContent = totalShows;
+        document.getElementById('endedCount').textContent = totalEpisodes;
     }
 
     selectDate(type) {

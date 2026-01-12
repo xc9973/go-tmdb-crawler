@@ -58,9 +58,8 @@ class ShowDetailPage {
             // 渲染剧集信息
             this.renderShowInfo();
             
-            // 加载剧集列表(这里需要调用获取剧集的API)
-            // 暂时显示提示
-            this.renderEpisodes();
+            // 加载集数列表
+            await this.loadEpisodes();
             
             // 加载爬取历史
             this.loadCrawlHistory();
@@ -71,6 +70,23 @@ class ShowDetailPage {
             this.showError('加载剧集详情失败: ' + error.message);
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    async loadEpisodes() {
+        try {
+            const response = await api.getShowEpisodes(this.showId);
+            
+            if (response.code === 0) {
+                this.episodes = response.data.seasons || [];
+                this.renderEpisodes();
+            } else {
+                console.error('加载集数失败:', response.message);
+                this.renderEpisodes(); // 渲染空状态
+            }
+        } catch (error) {
+            console.error('加载集数失败:', error);
+            this.renderEpisodes(); // 渲染空状态
         }
     }
 
@@ -111,20 +127,28 @@ class ShowDetailPage {
         seasonTabs.innerHTML = '';
         episodesContent.innerHTML = '';
 
-        // 这里应该按季数分组剧集
-        // 暂时显示一个示例表格
-        const seasons = [1, 2, 3]; // 示例数据
+        if (!this.episodes || this.episodes.length === 0) {
+            // 显示空状态
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'text-center text-muted py-5';
+            emptyDiv.innerHTML = '<i class="bi bi-inbox fs-1"></i><p class="mt-3">暂无集数数据</p>';
+            episodesContent.appendChild(emptyDiv);
+            return;
+        }
 
-        seasons.forEach((season, index) => {
+        // 按季度编号排序
+        this.episodes.sort((a, b) => a.season_number - b.season_number);
+
+        this.episodes.forEach((season, index) => {
             // 季度标签
             const tabItem = document.createElement('li');
             tabItem.className = 'nav-item';
             tabItem.innerHTML = `
-                <button class="nav-link ${index === 0 ? 'active' : ''}" 
-                        data-bs-toggle="tab" 
-                        data-bs-target="#season-${season}"
+                <button class="nav-link ${index === 0 ? 'active' : ''}"
+                        data-bs-toggle="tab"
+                        data-bs-target="#season-${season.season_number}"
                         type="button">
-                    第${season}季
+                    第${season.season_number}季 <span class="badge bg-secondary">${season.episode_count}</span>
                 </button>
             `;
             seasonTabs.appendChild(tabItem);
@@ -132,28 +156,60 @@ class ShowDetailPage {
             // 剧集内容
             const contentDiv = document.createElement('div');
             contentDiv.className = `tab-pane fade ${index === 0 ? 'show active' : ''}`;
-            contentDiv.id = `season-${season}`;
-            contentDiv.innerHTML = `
+            contentDiv.id = `season-${season.season_number}`;
+            
+            let tableHTML = `
                 <div class="table-responsive">
                     <table class="table table-sm table-hover">
                         <thead>
                             <tr>
-                                <th>集数</th>
-                                <th>名称</th>
-                                <th>播出日期</th>
-                                <th>评分</th>
+                                <th width="15%">集数</th>
+                                <th width="45%">名称</th>
+                                <th width="20%">播出日期</th>
+                                <th width="20%">评分</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td colspan="4" class="text-center text-muted">
-                                    暂无数据
-                                </td>
-                            </tr>
+            `;
+
+            if (season.episodes && season.episodes.length > 0) {
+                season.episodes.forEach(ep => {
+                    const episodeCode = `S${season.season_number}E${ep.episode_number}`;
+                    tableHTML += `
+                        <tr>
+                            <td><strong>${episodeCode}</strong></td>
+                            <td>
+                                ${this.escapeHtml(ep.name)}
+                                ${ep.overview ? `<small class="text-muted d-block">${this.escapeHtml(ep.overview.substring(0, 100))}${ep.overview.length > 100 ? '...' : ''}</small>` : ''}
+                            </td>
+                            <td>${this.formatDate(ep.air_date)}</td>
+                            <td>
+                                ${ep.vote_average ? `
+                                    <span class="badge bg-warning text-dark">
+                                        ${ep.vote_average.toFixed(1)} <i class="bi bi-star-fill"></i>
+                                    </span>
+                                ` : '-'}
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tableHTML += `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            暂无数据
+                        </td>
+                    </tr>
+                `;
+            }
+
+            tableHTML += `
                         </tbody>
                     </table>
                 </div>
             `;
+
+            contentDiv.innerHTML = tableHTML;
             episodesContent.appendChild(contentDiv);
         });
     }

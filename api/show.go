@@ -14,15 +14,21 @@ import (
 
 // ShowAPI handles show-related API endpoints
 type ShowAPI struct {
-	showRepo repositories.ShowRepository
-	crawler  *services.CrawlerService
+	showRepo    repositories.ShowRepository
+	episodeRepo repositories.EpisodeRepository
+	crawler     *services.CrawlerService
 }
 
 // NewShowAPI creates a new show API instance
-func NewShowAPI(showRepo repositories.ShowRepository, crawler *services.CrawlerService) *ShowAPI {
+func NewShowAPI(
+	showRepo repositories.ShowRepository,
+	episodeRepo repositories.EpisodeRepository,
+	crawler *services.CrawlerService,
+) *ShowAPI {
 	return &ShowAPI{
-		showRepo: showRepo,
-		crawler:  crawler,
+		showRepo:    showRepo,
+		episodeRepo: episodeRepo,
+		crawler:     crawler,
 	}
 }
 
@@ -234,13 +240,66 @@ func (api *ShowAPI) BatchCreateShows(c *gin.Context) {
 
 // GetShowEpisodes handles GET /api/v1/shows/:id/episodes
 func (api *ShowAPI) GetShowEpisodes(c *gin.Context) {
-	_, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.BadRequest("Invalid show ID"))
 		return
 	}
 
-	// This would need an episode repository
-	// For now, return a message
-	c.JSON(http.StatusOK, dto.SuccessWithMessage("Episodes feature coming soon", nil))
+	// Get show
+	show, err := api.showRepo.GetByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, dto.NotFound("Show not found"))
+		return
+	}
+
+	// Get all episodes for this show
+	episodes, err := api.episodeRepo.GetByShowID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
+		return
+	}
+
+	// Group episodes by season
+	type SeasonEpisodes struct {
+		SeasonNumber int               `json:"season_number"`
+		EpisodeCount int               `json:"episode_count"`
+		Episodes     []*models.Episode `json:"episodes"`
+	}
+
+	seasonMap := make(map[int]*SeasonEpisodes)
+	for _, episode := range episodes {
+		if _, exists := seasonMap[episode.SeasonNumber]; !exists {
+			seasonMap[episode.SeasonNumber] = &SeasonEpisodes{
+				SeasonNumber: episode.SeasonNumber,
+				Episodes:     make([]*models.Episode, 0),
+			}
+		}
+		seasonMap[episode.SeasonNumber].Episodes = append(seasonMap[episode.SeasonNumber].Episodes, episode)
+	}
+
+	// Convert to sorted slice
+	result := make([]*SeasonEpisodes, 0, len(seasonMap))
+	for _, season := range seasonMap {
+		season.EpisodeCount = len(season.Episodes)
+		result = append(result, season)
+	}
+
+	// Sort by season number
+	for i := 0; i < len(result); i++ {
+		for j := i + 1; j < len(result); j++ {
+			if result[i].SeasonNumber > result[j].SeasonNumber {
+				result[i], result[j] = result[j], result[i]
+			}
+		}
+	}
+
+	response := map[string]interface{}{
+		"show":    show,
+		"seasons": result,
+		"total":   len(episodes),
+	}
+
+	c.JSON(http.StatusOK, dto.Success(response))
 }

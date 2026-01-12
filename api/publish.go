@@ -179,27 +179,27 @@ func (api *PublishAPI) GenerateMarkdownRange(c *gin.Context) {
 	}
 
 	// Parse dates
-	_, err := time.Parse("2006-01-02", startDateStr)
+	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.BadRequest("Invalid start_date format. Use YYYY-MM-DD"))
 		return
 	}
 
-	_, err = time.Parse("2006-01-02", endDateStr)
+	endDate, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.BadRequest("Invalid end_date format. Use YYYY-MM-DD"))
 		return
 	}
 
-	// This would need episodeRepo access
-	// For now, return a placeholder
-	c.JSON(http.StatusOK, dto.SuccessWithMessage(
-		"Markdown generation for date range - to be implemented",
-		map[string]string{
-			"start_date": startDateStr,
-			"end_date":   endDateStr,
-		},
-	))
+	// Generate markdown
+	markdown, err := api.markdown.GenerateDateRange(startDate, endDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
+		return
+	}
+
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, markdown)
 }
 
 // GenerateMarkdownWeekly handles GET /api/v1/publish/markdown/weekly
