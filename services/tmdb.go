@@ -27,6 +27,14 @@ func NewTMDBService(apiKey, baseURL, lang string) *TMDBService {
 	}
 }
 
+// MustTMDBService returns a TMDB service and panics if API key is missing.
+func MustTMDBService(apiKey, baseURL, lang string) *TMDBService {
+	if apiKey == "" {
+		panic("TMDB_API_KEY is required")
+	}
+	return NewTMDBService(apiKey, baseURL, lang)
+}
+
 // GetShowDetails fetches show details from TMDB
 func (s *TMDBService) GetShowDetails(tmdbID int) (*dto.TMDBShowResponse, error) {
 	url := fmt.Sprintf("%s/tv/%d", s.baseURL, tmdbID)

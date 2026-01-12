@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -17,6 +18,8 @@ type Config struct {
 	Scheduler SchedulerConfig
 	Paths     PathsConfig
 	CORS      CORSConfig
+	Timezone  TimezoneConfig
+	Auth      AuthConfig
 }
 
 // AppConfig holds application configuration
@@ -56,6 +59,7 @@ type TelegraphConfig struct {
 type SchedulerConfig struct {
 	Enabled bool
 	Cron    string
+	TZ      string
 }
 
 // PathsConfig holds paths configuration
@@ -70,6 +74,23 @@ type CORSConfig struct {
 	AllowedOrigins string
 	AllowedMethods string
 	AllowedHeaders string
+}
+
+// TimezoneConfig holds timezone configuration
+type TimezoneConfig struct {
+	// Default timezone for date/time operations
+	// Examples: "UTC", "Asia/Shanghai", "America/New_York"
+	Default string
+}
+
+// AuthConfig holds authentication configuration
+type AuthConfig struct {
+	// SecretKey 用于JWT签名和API Key验证
+	// 如果为空，则跳过认证（开发环境）
+	SecretKey string
+
+	// AllowRemote 是否允许远程访问管理接口
+	AllowRemote bool
 }
 
 // Load loads configuration from environment variables
@@ -109,6 +130,7 @@ func Load() (*Config, error) {
 		Scheduler: SchedulerConfig{
 			Enabled: getEnvAsBool("ENABLE_SCHEDULER", true),
 			Cron:    getEnv("DAILY_CRON", "0 8 * * *"),
+			TZ:      getEnv("SCHEDULER_TZ", "UTC"),
 		},
 		Paths: PathsConfig{
 			Web:  getEnv("WEB_DIR", "./web"),
@@ -116,9 +138,16 @@ func Load() (*Config, error) {
 			Data: getEnv("DATA_DIR", "./data"),
 		},
 		CORS: CORSConfig{
-			AllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", "*"),
+			AllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", ""),
 			AllowedMethods: getEnv("CORS_ALLOWED_METHODS", "GET,POST,PUT,DELETE,OPTIONS"),
-			AllowedHeaders: getEnv("CORS_ALLOWED_HEADERS", "*"),
+			AllowedHeaders: getEnv("CORS_ALLOWED_HEADERS", "Content-Type,Authorization,X-Admin-API-Key"),
+		},
+		Timezone: TimezoneConfig{
+			Default: getEnv("DEFAULT_TIMEZONE", "UTC"),
+		},
+		Auth: AuthConfig{
+			SecretKey:   getEnv("ADMIN_API_KEY", ""),
+			AllowRemote: getEnvAsBool("ALLOW_REMOTE_ADMIN", false),
 		},
 	}
 
@@ -128,6 +157,26 @@ func Load() (*Config, error) {
 	}
 	if cfg.TMDB.APIKey == "" {
 		return nil, fmt.Errorf("TMDB_API_KEY is required")
+	}
+	if cfg.App.Port < 1 || cfg.App.Port > 65535 {
+		return nil, fmt.Errorf("APP_PORT must be between 1 and 65535")
+	}
+	if cfg.Database.Port < 1 || cfg.Database.Port > 65535 {
+		return nil, fmt.Errorf("DB_PORT must be between 1 and 65535")
+	}
+	if cfg.Database.Type != "sqlite" && cfg.Database.Type != "postgres" {
+		return nil, fmt.Errorf("DB_TYPE must be sqlite or postgres")
+	}
+
+	// Validate CORS configuration
+	if cfg.CORS.AllowedOrigins == "" {
+		// If not configured, use localhost for development
+		cfg.CORS.AllowedOrigins = "http://localhost:8080,http://127.0.0.1:8080"
+	}
+
+	// Validate timezone configuration
+	if _, err := time.LoadLocation(cfg.Timezone.Default); err != nil {
+		return nil, fmt.Errorf("invalid DEFAULT_TIMEZONE: %s (error: %w)", cfg.Timezone.Default, err)
 	}
 
 	return cfg, nil

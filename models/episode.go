@@ -29,7 +29,12 @@ type Episode struct {
 	Show *Show `gorm:"foreignKey:ShowID" json:"show,omitempty"`
 }
 
-// TableName specifies the table name for Episode model
+// EpisodeUniqueIndex defines the unique constraint for episodes
+// This ensures no duplicate episodes for the same show, season, and episode number
+// Note: GORM AutoMigrate will not create this constraint automatically.
+// For SQLite, you need to create the unique index manually via migration SQL.
+// For PostgreSQL, GORM may create it but it's recommended to use explicit migrations.
+// See migrations/001_init_schema.sql for the constraint definition.
 func (Episode) TableName() string {
 	return "episodes"
 }
@@ -40,6 +45,7 @@ func (e *Episode) GetEpisodeCode() string {
 }
 
 // IsAired checks if the episode has already aired
+// Uses current time in the system's local timezone for comparison
 func (e *Episode) IsAired() bool {
 	if e.AirDate == nil {
 		return false
@@ -47,12 +53,29 @@ func (e *Episode) IsAired() bool {
 	return e.AirDate.Before(time.Now())
 }
 
+// IsAiredInTimezone checks if the episode has already aired in the specified timezone
+func (e *Episode) IsAiredInTimezone(loc *time.Location) bool {
+	if e.AirDate == nil {
+		return false
+	}
+	return e.AirDate.Before(time.Now().In(loc))
+}
+
 // IsFuture checks if the episode will air in the future
+// Uses current time in the system's local timezone for comparison
 func (e *Episode) IsFuture() bool {
 	if e.AirDate == nil {
 		return false
 	}
 	return e.AirDate.After(time.Now())
+}
+
+// IsFutureInTimezone checks if the episode will air in the future in the specified timezone
+func (e *Episode) IsFutureInTimezone(loc *time.Location) bool {
+	if e.AirDate == nil {
+		return false
+	}
+	return e.AirDate.After(time.Now().In(loc))
 }
 
 // BeforeCreate hook

@@ -118,7 +118,25 @@ CREATE INDEX idx_telegraph_posts_created_at ON telegraph_posts(created_at);
 CREATE INDEX idx_telegraph_posts_content_hash ON telegraph_posts(content_hash);
 
 -- ============================================
--- 5. Functions and Triggers
+-- 5. Crawl Tasks Table (爬虫任务表)
+-- ============================================
+CREATE TABLE IF NOT EXISTS crawl_tasks (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    params TEXT,
+    error_message TEXT,
+    started_at TIMESTAMP,
+    finished_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for crawl_tasks
+CREATE INDEX idx_crawl_tasks_status ON crawl_tasks(status);
+CREATE INDEX idx_crawl_tasks_created_at ON crawl_tasks(created_at);
+
+-- ============================================
+-- 6. Functions and Triggers
 -- ============================================
 
 -- Function to update updated_at timestamp

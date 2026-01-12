@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/xc9973/go-tmdb-crawler/models"
 	"github.com/xc9973/go-tmdb-crawler/repositories"
 	"github.com/xc9973/go-tmdb-crawler/services"
+	"gorm.io/gorm"
 )
 
 // CrawlerAPI handles crawler control endpoints
@@ -19,6 +21,7 @@ type CrawlerAPI struct {
 	showRepo    repositories.ShowRepository
 	logRepo     repositories.CrawlLogRepository
 	episodeRepo repositories.EpisodeRepository
+	taskManager *services.TaskManager
 }
 
 // NewCrawlerAPI creates a new crawler API instance
@@ -27,23 +30,31 @@ func NewCrawlerAPI(
 	showRepo repositories.ShowRepository,
 	logRepo repositories.CrawlLogRepository,
 	episodeRepo repositories.EpisodeRepository,
+	taskManager *services.TaskManager,
 ) *CrawlerAPI {
 	return &CrawlerAPI{
 		crawler:     crawler,
 		showRepo:    showRepo,
 		logRepo:     logRepo,
 		episodeRepo: episodeRepo,
+		taskManager: taskManager,
 	}
 }
 
 // RefreshAll handles POST /api/v1/crawler/refresh-all
 func (api *CrawlerAPI) RefreshAll(c *gin.Context) {
-	// Start refresh in background
-	go func() {
-		_ = api.crawler.RefreshAll()
-	}()
+	if api.taskManager == nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError("task manager not available"))
+		return
+	}
 
-	c.JSON(http.StatusAccepted, dto.SuccessWithMessage("Refresh started in background", nil))
+	task, err := api.taskManager.StartRefreshAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusAccepted, dto.SuccessWithMessage("Refresh started in background", task))
 }
 
 // GetTodayUpdates handles GET /api/v1/crawler/today-updates
@@ -137,14 +148,18 @@ func (api *CrawlerAPI) GetCrawlStats(c *gin.Context) {
 		episodeCount = 0
 	}
 
-	successCount, err := api.logRepo.CountByStatus("success")
-	if err != nil {
-		successCount = 0
-	}
+	successCount := int64(0)
+	failedCount := int64(0)
+	if api.logRepo != nil {
+		successCount, err = api.logRepo.CountByStatus("success")
+		if err != nil {
+			successCount = 0
+		}
 
-	failedCount, err := api.logRepo.CountByStatus("failed")
-	if err != nil {
-		failedCount = 0
+		failedCount, err = api.logRepo.CountByStatus("failed")
+		if err != nil {
+			failedCount = 0
+		}
 	}
 
 	todayEpisodes, err := api.episodeRepo.GetTodayUpdates()
@@ -223,35 +238,20 @@ func (api *CrawlerAPI) CrawlByStatus(c *gin.Context) {
 		return
 	}
 
-	// Get shows by status
-	var shows []*models.Show
-	var err error
-
-	if req.Status == "returning" || req.Status == "Returning Series" {
-		shows, err = api.showRepo.ListReturning()
-	} else {
-		shows, err = api.showRepo.ListAll()
+	if api.taskManager == nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError("task manager not available"))
+		return
 	}
 
+	task, err := api.taskManager.StartCrawlByStatus(req.Status)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
 		return
 	}
 
-	// Extract TMDB IDs
-	tmdbIDs := make([]int, len(shows))
-	for i, show := range shows {
-		tmdbIDs[i] = show.TmdbID
-	}
-
-	// Batch crawl
-	go func() {
-		_ = api.crawler.BatchCrawl(tmdbIDs)
-	}()
-
 	c.JSON(http.StatusAccepted, dto.SuccessWithMessage(
-		fmt.Sprintf("Started crawling %d shows with status: %s", len(shows), req.Status),
-		nil,
+		fmt.Sprintf("Started crawling with status: %s", req.Status),
+		task,
 	))
 }
 
@@ -277,6 +277,14 @@ func (api *CrawlerAPI) DeleteOldLogs(c *gin.Context) {
 
 // GetHealthStatus handles GET /api/v1/crawler/health
 func (api *CrawlerAPI) GetHealthStatus(c *gin.Context) {
+	if api.logRepo == nil {
+		c.JSON(http.StatusOK, dto.Success(map[string]interface{}{
+			"status":  "unknown",
+			"message": "Log repository unavailable",
+		}))
+		return
+	}
+
 	// Check if recent crawls are successful
 	recentLogs, err := api.logRepo.GetRecent(10)
 	if err != nil {
@@ -312,4 +320,31 @@ func (api *CrawlerAPI) GetHealthStatus(c *gin.Context) {
 		"success_rate":  fmt.Sprintf("%.1f%%", successRate),
 		"recent_crawls": len(recentLogs),
 	}))
+}
+
+// GetTask handles GET /api/v1/crawler/tasks/:id
+func (api *CrawlerAPI) GetTask(c *gin.Context) {
+	if api.taskManager == nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError("task manager not available"))
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.BadRequest("Invalid task ID"))
+		return
+	}
+
+	task, err := api.taskManager.GetTask(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, dto.NotFound("Task not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Success(task))
 }

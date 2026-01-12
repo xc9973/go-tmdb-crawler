@@ -19,6 +19,16 @@ type Scheduler struct {
 	running         bool
 	lastCrawlTime   time.Time
 	lastPublishTime time.Time
+
+	// Concurrency control
+	crawlJobRunning   bool
+	publishJobRunning bool
+	crawlJobMutex     sync.Mutex
+	publishJobMutex   sync.Mutex
+
+	// Timeout settings
+	crawlTimeout   time.Duration
+	publishTimeout time.Duration
 }
 
 // NewScheduler creates a new scheduler instance
@@ -28,11 +38,13 @@ func NewScheduler(
 	logger *utils.Logger,
 ) *Scheduler {
 	return &Scheduler{
-		cron:      cron.New(cron.WithSeconds()),
-		crawler:   crawler,
-		publisher: publisher,
-		logger:    logger,
-		running:   false,
+		cron:           cron.New(cron.WithSeconds()),
+		crawler:        crawler,
+		publisher:      publisher,
+		logger:         logger,
+		running:        false,
+		crawlTimeout:   30 * time.Minute, // Default crawl timeout
+		publishTimeout: 10 * time.Minute, // Default publish timeout
 	}
 }
 
@@ -95,92 +107,112 @@ func (s *Scheduler) IsRunning() bool {
 
 // dailyCrawlJob performs daily crawl task
 func (s *Scheduler) dailyCrawlJob() {
+	// Check if crawl job is already running
+	if !s.crawlJobMutex.TryLock() {
+		s.logger.Warn("Daily crawl job already running, skipping")
+		return
+	}
+	defer s.crawlJobMutex.Unlock()
+
 	s.logger.Info("Starting daily crawl job...")
 	startTime := time.Now()
 
 	// Refresh all returning shows
-	go func() {
-		if err := s.crawler.RefreshAll(); err != nil {
-			s.logger.Error("Daily crawl failed: %v", err)
-		} else {
-			s.mu.Lock()
-			s.lastCrawlTime = time.Now()
-			s.mu.Unlock()
-			duration := time.Since(startTime)
-			s.logger.Info("Daily crawl completed in %v", duration)
-		}
-	}()
+	if err := s.crawler.RefreshAll(); err != nil {
+		s.logger.Errorf("Daily crawl failed: %v", err)
+	} else {
+		s.mu.Lock()
+		s.lastCrawlTime = time.Now()
+		s.mu.Unlock()
+		duration := time.Since(startTime)
+		s.logger.Infof("Daily crawl completed in %v", duration)
+	}
 }
 
 // dailyPublishJob performs daily publish task
 func (s *Scheduler) dailyPublishJob() {
+	// Check if publish job is already running
+	if !s.publishJobMutex.TryLock() {
+		s.logger.Warn("Daily publish job already running, skipping")
+		return
+	}
+	defer s.publishJobMutex.Unlock()
+
 	s.logger.Info("Starting daily publish job...")
 	startTime := time.Now()
 
 	// Publish today's updates
-	go func() {
-		result, err := s.publisher.PublishTodayUpdates()
-		if err != nil {
-			s.logger.Error("Daily publish failed: %v", err)
-		} else if result.Success {
-			s.mu.Lock()
-			s.lastPublishTime = time.Now()
-			s.mu.Unlock()
-			duration := time.Since(startTime)
-			s.logger.Info("Daily publish completed: %s (%d shows, %d episodes) in %v",
-				result.URL,
-				result.ShowsCount,
-				result.EpisodesCount,
-				duration)
-		} else {
-			s.logger.Warn("Daily publish skipped: %v", result.Error)
-		}
-	}()
+	result, err := s.publisher.PublishTodayUpdates()
+	if err != nil {
+		s.logger.Errorf("Daily publish failed: %v", err)
+	} else if result.Success {
+		s.mu.Lock()
+		s.lastPublishTime = time.Now()
+		s.mu.Unlock()
+		duration := time.Since(startTime)
+		s.logger.Infof("Daily publish completed: %s (%d shows, %d episodes) in %v",
+			result.URL,
+			result.ShowsCount,
+			result.EpisodesCount,
+			duration)
+	} else {
+		s.logger.Warnf("Daily publish skipped: %v", result.Error)
+	}
 }
 
 // weeklyCrawlJob performs weekly full crawl
 func (s *Scheduler) weeklyCrawlJob() {
+	// Check if crawl job is already running
+	if !s.crawlJobMutex.TryLock() {
+		s.logger.Warn("Weekly crawl job already running, skipping")
+		return
+	}
+	defer s.crawlJobMutex.Unlock()
+
 	s.logger.Info("Starting weekly crawl job...")
 	startTime := time.Now()
 
 	// Refresh all shows
-	go func() {
-		if err := s.crawler.RefreshAll(); err != nil {
-			s.logger.Error("Weekly crawl failed: %v", err)
-		} else {
-			s.mu.Lock()
-			s.lastCrawlTime = time.Now()
-			s.mu.Unlock()
-			duration := time.Since(startTime)
-			s.logger.Info("Weekly crawl completed in %v", duration)
-		}
-	}()
+	if err := s.crawler.RefreshAll(); err != nil {
+		s.logger.Errorf("Weekly crawl failed: %v", err)
+	} else {
+		s.mu.Lock()
+		s.lastCrawlTime = time.Now()
+		s.mu.Unlock()
+		duration := time.Since(startTime)
+		s.logger.Infof("Weekly crawl completed in %v", duration)
+	}
 }
 
 // weeklyPublishJob performs weekly publish
 func (s *Scheduler) weeklyPublishJob() {
+	// Check if publish job is already running
+	if !s.publishJobMutex.TryLock() {
+		s.logger.Warn("Weekly publish job already running, skipping")
+		return
+	}
+	defer s.publishJobMutex.Unlock()
+
 	s.logger.Info("Starting weekly publish job...")
 	startTime := time.Now()
 
 	// Publish weekly updates
-	go func() {
-		result, err := s.publisher.PublishWeeklyUpdates()
-		if err != nil {
-			s.logger.Error("Weekly publish failed: %v", err)
-		} else if result.Success {
-			s.mu.Lock()
-			s.lastPublishTime = time.Now()
-			s.mu.Unlock()
-			duration := time.Since(startTime)
-			s.logger.Info("Weekly publish completed: %s (%d shows, %d episodes) in %v",
-				result.URL,
-				result.ShowsCount,
-				result.EpisodesCount,
-				duration)
-		} else {
-			s.logger.Warn("Weekly publish skipped: %v", result.Error)
-		}
-	}()
+	result, err := s.publisher.PublishWeeklyUpdates()
+	if err != nil {
+		s.logger.Errorf("Weekly publish failed: %v", err)
+	} else if result.Success {
+		s.mu.Lock()
+		s.lastPublishTime = time.Now()
+		s.mu.Unlock()
+		duration := time.Since(startTime)
+		s.logger.Infof("Weekly publish completed: %s (%d shows, %d episodes) in %v",
+			result.URL,
+			result.ShowsCount,
+			result.EpisodesCount,
+			duration)
+	} else {
+		s.logger.Warnf("Weekly publish skipped: %v", result.Error)
+	}
 }
 
 // RunCrawlNow triggers an immediate crawl job
@@ -197,7 +229,7 @@ func (s *Scheduler) RunCrawlNow() error {
 	s.mu.Unlock()
 
 	duration := time.Since(startTime)
-	s.logger.Info("Immediate crawl completed in %v", duration)
+	s.logger.Infof("Immediate crawl completed in %v", duration)
 	return nil
 }
 
@@ -217,7 +249,7 @@ func (s *Scheduler) RunPublishNow() (*PublishResult, error) {
 		s.mu.Unlock()
 
 		duration := time.Since(startTime)
-		s.logger.Info("Immediate publish completed: %s (%d shows, %d episodes) in %v",
+		s.logger.Infof("Immediate publish completed: %s (%d shows, %d episodes) in %v",
 			result.URL,
 			result.ShowsCount,
 			result.EpisodesCount,
@@ -233,9 +265,11 @@ func (s *Scheduler) GetStatus() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"running":           s.running,
-		"last_crawl_time":   s.lastCrawlTime,
-		"last_publish_time": s.lastPublishTime,
+		"running":             s.running,
+		"last_crawl_time":     s.lastCrawlTime,
+		"last_publish_time":   s.lastPublishTime,
+		"crawl_job_running":   s.crawlJobRunning,
+		"publish_job_running": s.publishJobRunning,
 	}
 
 	if !s.lastCrawlTime.IsZero() {
@@ -272,21 +306,39 @@ func (s *Scheduler) RemoveJob(id cron.EntryID) {
 	s.cron.Remove(id)
 }
 
+// SetTimeouts sets the timeout for crawl and publish jobs
+func (s *Scheduler) SetTimeouts(crawlTimeout, publishTimeout time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.crawlTimeout = crawlTimeout
+	s.publishTimeout = publishTimeout
+}
+
+// GetTimeouts returns the current timeout settings
+func (s *Scheduler) GetTimeouts() map[string]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return map[string]string{
+		"crawl_timeout":   s.crawlTimeout.String(),
+		"publish_timeout": s.publishTimeout.String(),
+	}
+}
+
 // RunManualCrawl runs a manual crawl task
 func (s *Scheduler) RunManualCrawl(showID int) error {
-	s.logger.Info("Running manual crawl for show %d", showID)
+	s.logger.Infof("Running manual crawl for show %d", showID)
 
 	if err := s.crawler.CrawlShow(showID); err != nil {
 		return fmt.Errorf("manual crawl failed: %w", err)
 	}
 
-	s.logger.Info("Manual crawl completed for show %d", showID)
+	s.logger.Infof("Manual crawl completed for show %d", showID)
 	return nil
 }
 
 // RunManualPublish runs a manual publish task
 func (s *Scheduler) RunManualPublish(showID uint) (*PublishResult, error) {
-	s.logger.Info("Running manual publish for show %d", showID)
+	s.logger.Infof("Running manual publish for show %d", showID)
 
 	result, err := s.publisher.PublishShow(showID)
 	if err != nil {
@@ -298,7 +350,7 @@ func (s *Scheduler) RunManualPublish(showID uint) (*PublishResult, error) {
 		s.lastPublishTime = time.Now()
 		s.mu.Unlock()
 
-		s.logger.Info("Manual publish completed: %s", result.URL)
+		s.logger.Infof("Manual publish completed: %s", result.URL)
 	}
 
 	return result, nil
@@ -313,8 +365,13 @@ func (s *Scheduler) SetCronSpec(jobType, spec string) error {
 }
 
 // ValidateCronSpec validates a cron specification
+// Uses cron.Parse to support 6-field cron expressions with seconds
+// Format: seconds minutes hours day month weekday
 func ValidateCronSpec(spec string) error {
-	_, err := cron.ParseStandard(spec)
+	// Use cron.Parse instead of cron.ParseStandard to support seconds field
+	// This matches the cron.WithSeconds() option used in NewScheduler
+	parser := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+	_, err := parser.Parse(spec)
 	return err
 }
 
@@ -328,15 +385,45 @@ func GetDefaultCronSpecs() map[string]string {
 	}
 }
 
+// Helper function to run job with timeout
+func (s *Scheduler) runJobWithTimeout(jobName string, timeout time.Duration, job func() error) error {
+	s.logger.Infof("Starting %s (timeout: %v)", jobName, timeout)
+	startTime := time.Now()
+
+	// Create a channel to receive job result
+	done := make(chan error, 1)
+
+	// Run job in goroutine
+	go func() {
+		done <- job()
+	}()
+
+	// Wait for job completion or timeout
+	select {
+	case err := <-done:
+		duration := time.Since(startTime)
+		if err != nil {
+			s.logger.Errorf("%s failed after %v: %v", jobName, duration, err)
+			return err
+		}
+		s.logger.Infof("%s completed in %v", jobName, duration)
+		return nil
+	case <-time.After(timeout):
+		duration := time.Since(startTime)
+		s.logger.Errorf("%s timed out after %v (limit: %v)", jobName, duration, timeout)
+		return fmt.Errorf("%s timed out after %v", jobName, timeout)
+	}
+}
+
 // Helper function to run job with error handling
 func (s *Scheduler) runJobWithErrorHandling(jobName string, job func() error) {
-	s.logger.Info("Starting %s", jobName)
+	s.logger.Infof("Starting %s", jobName)
 	startTime := time.Now()
 
 	if err := job(); err != nil {
-		s.logger.Error("%s failed: %v", jobName, err)
+		s.logger.Errorf("%s failed: %v", jobName, err)
 	} else {
 		duration := time.Since(startTime)
-		s.logger.Info("%s completed in %v", jobName, duration)
+		s.logger.Infof("%s completed in %v", jobName, duration)
 	}
 }

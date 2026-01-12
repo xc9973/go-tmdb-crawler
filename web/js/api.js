@@ -6,40 +6,74 @@
 class APIClient {
     constructor(baseURL = '/api/v1') {
         this.baseURL = baseURL;
-        this.apiKey = localStorage.getItem('admin_api_key') || '';
-    }
-
-    /**
-     * 设置API密钥
-     */
-    setApiKey(key) {
-        this.apiKey = key;
-        if (key) {
-            localStorage.setItem('admin_api_key', key);
-        } else {
-            localStorage.removeItem('admin_api_key');
-        }
-    }
-
-    /**
-     * 获取当前API密钥
-     */
-    getApiKey() {
-        return this.apiKey;
+        this.isAuthenticated = false;
     }
 
     /**
      * 检查是否已认证
+     * 通过调用session接口验证
      */
-    isAuthenticated() {
-        return !!this.apiKey;
+    async checkAuth() {
+        try {
+            const response = await fetch(`${this.baseURL}/auth/session`, {
+                method: 'GET',
+                credentials: 'include', // 包含cookie
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.isAuthenticated = data.code === 200;
+                return this.isAuthenticated;
+            }
+            return false;
+        } catch (error) {
+            console.error('检查认证状态失败:', error);
+            return false;
+        }
     }
 
     /**
-     * 清除认证
+     * 登录
      */
-    logout() {
-        this.setApiKey('');
+    async login(apiKey) {
+        try {
+            const response = await fetch(`${this.baseURL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ api_key: apiKey }),
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.code === 200) {
+                this.isAuthenticated = true;
+                return { success: true, data: data.data };
+            }
+            
+            return { success: false, message: data.message };
+        } catch (error) {
+            console.error('登录失败:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    /**
+     * 登出
+     */
+    async logout() {
+        try {
+            await fetch(`${this.baseURL}/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } catch (error) {
+            console.error('登出失败:', error);
+        } finally {
+            this.isAuthenticated = false;
+        }
     }
 
     /**
@@ -50,12 +84,8 @@ class APIClient {
             'Content-Type': 'application/json',
         };
 
-        // 添加认证头
-        if (this.apiKey) {
-            headers['X-Admin-API-Key'] = this.apiKey;
-        }
-
         const defaultOptions = {
+            credentials: 'include', // 包含cookie
             headers,
         };
 
@@ -70,6 +100,7 @@ class APIClient {
             
             // 处理401未认证
             if (response.status === 401) {
+                this.isAuthenticated = false;
                 // 触发认证失败事件
                 window.dispatchEvent(new CustomEvent('auth-required'));
                 throw new Error('需要登录认证');
@@ -85,32 +116,6 @@ class APIClient {
         } catch (error) {
             console.error('API请求错误:', error);
             throw error;
-        }
-    }
-
-    /**
-     * 验证API密钥是否有效
-     */
-    async validateApiKey(key) {
-        const tempHeaders = {
-            'Content-Type': 'application/json',
-            'X-Admin-API-Key': key,
-        };
-
-        try {
-            const response = await fetch(`${this.baseURL}/crawler/status`, {
-                method: 'GET',
-                headers: tempHeaders,
-            });
-            
-            if (response.status === 401) {
-                return false;
-            }
-            
-            return response.ok;
-        } catch (error) {
-            console.error('验证API密钥失败:', error);
-            return false;
         }
     }
 
@@ -279,11 +284,9 @@ class APIClient {
      * 获取今日更新Markdown
      */
     async getTodayMarkdown() {
-        const headers = {};
-        if (this.apiKey) {
-            headers['X-Admin-API-Key'] = this.apiKey;
-        }
-        const response = await fetch(`${this.baseURL}/publish/markdown/today`, { headers });
+        const response = await fetch(`${this.baseURL}/publish/markdown/today`, {
+            credentials: 'include',
+        });
         return response.text();
     }
 
@@ -291,11 +294,9 @@ class APIClient {
      * 获取剧集详情Markdown
      */
     async getShowMarkdown(id) {
-        const headers = {};
-        if (this.apiKey) {
-            headers['X-Admin-API-Key'] = this.apiKey;
-        }
-        const response = await fetch(`${this.baseURL}/publish/markdown/show/${id}`, { headers });
+        const response = await fetch(`${this.baseURL}/publish/markdown/show/${id}`, {
+            credentials: 'include',
+        });
         return response.text();
     }
 
@@ -303,11 +304,9 @@ class APIClient {
      * 获取本周更新Markdown
      */
     async getWeeklyMarkdown() {
-        const headers = {};
-        if (this.apiKey) {
-            headers['X-Admin-API-Key'] = this.apiKey;
-        }
-        const response = await fetch(`${this.baseURL}/publish/markdown/weekly`, { headers });
+        const response = await fetch(`${this.baseURL}/publish/markdown/weekly`, {
+            credentials: 'include',
+        });
         return response.text();
     }
 }
@@ -344,17 +343,17 @@ function showLoginModal(message = '') {
                         <form id="loginForm">
                             <div class="mb-3">
                                 <label for="apiKeyInput" class="form-label">API 密钥</label>
-                                <input type="password" class="form-control" id="apiKeyInput" 
+                                <input type="password" class="form-control" id="apiKeyInput"
                                        placeholder="请输入管理员API密钥" required>
                                 <div class="form-text">
                                     联系管理员获取API密钥
                                 </div>
                             </div>
-                            <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" id="rememberKey" checked>
-                                <label class="form-check-label" for="rememberKey">
-                                    记住密钥
-                                </label>
+                            <div class="alert alert-info mb-0">
+                                <small>
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    登录状态将在浏览器关闭后自动清除，更安全
+                                </small>
                             </div>
                         </form>
                     </div>
@@ -403,7 +402,6 @@ function showLoginModal(message = '') {
  */
 async function handleLogin() {
     const apiKeyInput = document.getElementById('apiKeyInput');
-    const rememberKey = document.getElementById('rememberKey');
     const loginBtn = document.getElementById('loginBtn');
     const errorEl = document.getElementById('loginError');
     
@@ -420,29 +418,21 @@ async function handleLogin() {
     loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>验证中...';
     
     try {
-        // 验证API密钥
-        const valid = await api.validateApiKey(apiKey);
+        // 使用新的登录API
+        const result = await api.login(apiKey);
         
-        if (valid) {
-            // 保存密钥
-            if (rememberKey.checked) {
-                api.setApiKey(apiKey);
-            } else {
-                // 仅保存到内存
-                api.apiKey = apiKey;
-            }
-            
+        if (result.success) {
             // 关闭模态框
             const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
             modal.hide();
             
-            // 刷新页面或重新加载数据
+            // 触发认证成功事件
             window.dispatchEvent(new CustomEvent('auth-success'));
             
             // 刷新页面
             location.reload();
         } else {
-            errorEl.textContent = 'API密钥无效,请检查后重试';
+            errorEl.textContent = result.message || 'API密钥无效,请检查后重试';
             errorEl.classList.remove('d-none');
         }
     } catch (error) {
@@ -458,16 +448,11 @@ async function handleLogin() {
  * 检查认证状态,如果未认证则显示登录框
  */
 async function checkAuth() {
-    if (!api.isAuthenticated()) {
-        showLoginModal('请先登录以访问管理功能');
-        return false;
-    }
+    // 检查认证状态
+    const authenticated = await api.checkAuth();
     
-    // 验证现有密钥是否仍然有效
-    const valid = await api.validateApiKey(api.getApiKey());
-    if (!valid) {
-        api.logout();
-        showLoginModal('登录已过期,请重新登录');
+    if (!authenticated) {
+        showLoginModal('请先登录以访问管理功能');
         return false;
     }
     

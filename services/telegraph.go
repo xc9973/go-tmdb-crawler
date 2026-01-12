@@ -248,7 +248,15 @@ func (s *TelegraphService) GenerateUpdateListContent(episodes []*models.Episode)
 	// Group by show
 	showMap := make(map[string][]*models.Episode)
 	for _, episode := range episodes {
-		showName := episode.Show.Name
+		if episode == nil {
+			continue
+		}
+		showName := "未知剧集"
+		if episode.Show != nil && episode.Show.Name != "" {
+			showName = episode.Show.Name
+		} else if episode.ShowID != 0 {
+			showName = fmt.Sprintf("ShowID:%d", episode.ShowID)
+		}
 		showMap[showName] = append(showMap[showName], episode)
 	}
 
@@ -257,6 +265,9 @@ func (s *TelegraphService) GenerateUpdateListContent(episodes []*models.Episode)
 		content = append(content, NewBoldNode(showName))
 
 		for _, ep := range showEpisodes {
+			if ep == nil {
+				continue
+			}
 			episodeCode := ep.GetEpisodeCode()
 			text := fmt.Sprintf("%s - %s", episodeCode, ep.Name)
 			content = append(content, NewListNode(text))

@@ -66,7 +66,7 @@ TMDB剧集爬取系统提供RESTful API接口,用于管理剧集数据、控制�
 |------|------|------|------|
 | page | int | 否 | 页码,默认1 |
 | page_size | int | 否 | 每页数量,默认20 |
-| status | string | 否 | 状态过滤: `returning`/`ended` |
+| status | string | 否 | 状态过滤: `Returning Series`/`Ended`/`Canceled` |
 | search | string | 否 | 搜索关键词 |
 
 **请求示例**:
@@ -326,26 +326,99 @@ curl -X POST "http://localhost:8080/api/v1/crawler/show/95479"
 
 **端点**: `POST /api/v1/crawler/refresh-all`
 
-**描述**: 刷新所有连载中剧集的数据
+**描述**: 刷新所有连载中剧集的数据(异步任务)
 
 **响应示例**:
 ```json
 {
-  "code": 200,
-  "message": "刷新完成",
+  "code": 202,
+  "message": "Refresh started in background",
   "data": {
-    "total_shows": 25,
-    "success_count": 23,
-    "failed_count": 2,
-    "total_episodes": 789,
-    "duration": "45s"
+    "id": 12,
+    "type": "refresh_all",
+    "status": "queued",
+    "params": "",
+    "error_message": "",
+    "started_at": null,
+    "finished_at": null,
+    "created_at": "2026-01-12T00:10:00Z"
   }
 }
 ```
 
 ---
 
-### 3. 获取爬取日志
+### 3. 按状态爬取
+
+**端点**: `POST /api/v1/crawler/crawl-by-status`
+
+**描述**: 按指定状态爬取剧集(异步任务)
+
+**请求体**:
+```json
+{
+  "status": "returning"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 202,
+  "message": "Started crawling with status: returning",
+  "data": {
+    "id": 13,
+    "type": "crawl_by_status",
+    "status": "queued",
+    "params": "{\"status\":\"returning\"}",
+    "error_message": "",
+    "started_at": null,
+    "finished_at": null,
+    "created_at": "2026-01-12T00:11:00Z"
+  }
+}
+```
+
+---
+
+### 4. 查询任务状态
+
+**端点**: `GET /api/v1/crawler/tasks/:id`
+
+**描述**: 查询异步任务状态与错误信息
+
+**路径参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | int | 是 | 任务ID |
+
+**请求示例**:
+```bash
+curl "http://localhost:8080/api/v1/crawler/tasks/12"
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 12,
+    "type": "refresh_all",
+    "status": "running",
+    "params": "",
+    "error_message": "",
+    "started_at": "2026-01-12T00:10:01Z",
+    "finished_at": null,
+    "created_at": "2026-01-12T00:10:00Z"
+  }
+}
+```
+
+---
+
+### 5. 获取爬取日志
 
 **端点**: `GET /api/v1/crawler/logs`
 
@@ -393,7 +466,7 @@ curl "http://localhost:8080/api/v1/crawler/logs?page=1&page_size=20"
 
 ---
 
-### 4. 获取爬虫状态
+### 6. 获取爬虫状态
 
 **端点**: `GET /api/v1/crawler/status`
 

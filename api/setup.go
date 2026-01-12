@@ -1,10 +1,28 @@
 package api
 
 import (
+	"log"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/xc9973/go-tmdb-crawler/config"
 	"github.com/xc9973/go-tmdb-crawler/middleware"
+	"github.com/xc9973/go-tmdb-crawler/models"
+	"github.com/xc9973/go-tmdb-crawler/repositories"
+	"github.com/xc9973/go-tmdb-crawler/services"
+	"github.com/xc9973/go-tmdb-crawler/utils"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
+
+// mustOpenDB 打开数据库连接，失败时panic
+func mustOpenDB(cfg *config.Config) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(cfg.Database.Path), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	return db
+}
 
 // SetupRouter creates and configures the Gin router
 func SetupRouter(cfg *config.Config) *gin.Engine {
@@ -21,20 +39,73 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	router.StaticFile("/logs.html", cfg.Paths.Web+"/logs.html")
 	router.StaticFile("/show_detail.html", cfg.Paths.Web+"/show_detail.html")
 
+	// Initialize timezone helper
+	location, err := time.LoadLocation(cfg.Timezone.Default)
+	if err != nil {
+		log.Fatalf("Failed to load timezone location '%s': %v", cfg.Timezone.Default, err)
+	}
+	timezoneHelper := utils.NewTimezoneHelper(location)
+
+	// Dependencies
+	db := mustOpenDB(cfg)
+	showRepo := repositories.NewShowRepository(db)
+	episodeRepo := repositories.NewEpisodeRepository(db)
+	crawlLogRepo := repositories.NewCrawlLogRepository(db)
+	crawlTaskRepo := repositories.NewCrawlTaskRepository(db)
+
+	// Set timezone helper for episode repository
+	episodeRepo.SetTimezoneHelper(timezoneHelper)
+
+	if err := db.AutoMigrate(&models.Session{}); err != nil {
+		log.Fatalf("Failed to migrate session table: %v", err)
+	}
+
+	// 初始化认证服务
+	authService := services.NewAuthService(cfg.Auth.SecretKey, db)
+
+	// 设置认证服务到中间件
+	middleware.InitAdminAuth(cfg.Auth.SecretKey, cfg.Auth.AllowRemote)
+	if adminAuth := middleware.GetAdminAuth(); adminAuth != nil {
+		adminAuth.SetAuthService(authService)
+	}
+
+	// 初始化认证处理器
+	authHandler := NewAuthHandler(authService, middleware.GetAdminAuth())
+
+	telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
+	publisher := services.NewPublisherService(telegraph, showRepo, episodeRepo, timezoneHelper)
+	tmdb := services.MustTMDBService(cfg.TMDB.APIKey, cfg.TMDB.BaseURL, cfg.TMDB.Language)
+	crawler := services.NewCrawlerService(tmdb, showRepo, episodeRepo, crawlLogRepo, crawlTaskRepo)
+	taskManager := services.NewTaskManager(crawlTaskRepo, crawler)
+
+	showAPI := NewShowAPI(showRepo, crawler)
+	crawlerAPI := NewCrawlerAPI(crawler, showRepo, crawlLogRepo, episodeRepo, taskManager)
+	markdownService := services.NewMarkdownService(episodeRepo, showRepo)
+	markdownService.SetTimezoneHelper(timezoneHelper)
+	publishAPI := NewPublishAPI(publisher, markdownService)
+
 	// API routes
 	api := router.Group("/api/v1")
 	{
+		// 认证路由 - 公开
+		auth := api.Group("/auth")
+		{
+			auth.POST("/login", authHandler.Login)
+			auth.POST("/logout", authHandler.Logout)
+			auth.POST("/refresh", authHandler.RefreshToken)
+			auth.GET("/session", authHandler.GetSessionInfo)
+		}
+
 		// 公开路由 - 无需认证
 		// Shows (只读)
-		api.GET("/shows", getShows)
-		api.GET("/shows/:id", getShow)
+		api.GET("/shows", showAPI.ListShows)
+		api.GET("/shows/:id", showAPI.GetShow)
 
 		// Calendar (只读)
-		api.GET("/calendar/today", getTodayUpdates)
-		api.GET("/calendar", getCalendar)
+		api.GET("/calendar/today", crawlerAPI.GetTodayUpdates)
 
 		// Crawler (只读状态)
-		api.GET("/crawler/status", getCrawlerStatus)
+		api.GET("/crawler/status", crawlerAPI.GetHealthStatus)
 	}
 
 	// 管理员路由 - 需要认证
@@ -42,14 +113,30 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	admin.Use(middleware.AdminAuthMiddleware())
 	{
 		// Shows (写操作)
-		admin.POST("/shows", createShow)
-		admin.PUT("/shows/:id", updateShow)
-		admin.DELETE("/shows/:id", deleteShow)
-		admin.POST("/shows/:id/refresh", refreshShow)
+		admin.POST("/shows", showAPI.CreateShow)
+		admin.PUT("/shows/:id", showAPI.UpdateShow)
+		admin.DELETE("/shows/:id", showAPI.DeleteShow)
+		admin.POST("/shows/:id/refresh", showAPI.RefreshShow)
 
 		// Crawler (写操作和日志)
-		admin.POST("/crawler/show/:tmdb_id", crawlShow)
-		admin.GET("/crawler/logs", getCrawlLogs)
+		admin.POST("/crawler/show/:tmdb_id", crawlerAPI.CrawlByStatus)
+		admin.POST("/crawler/refresh-all", crawlerAPI.RefreshAll)
+		admin.POST("/crawler/crawl-by-status", crawlerAPI.CrawlByStatus)
+		admin.GET("/crawler/logs", crawlerAPI.GetCrawlLogs)
+		admin.DELETE("/crawler/logs/old", crawlerAPI.DeleteOldLogs)
+		admin.GET("/crawler/health", crawlerAPI.GetHealthStatus)
+		admin.GET("/crawler/tasks/:id", crawlerAPI.GetTask)
+
+		// Publish
+		admin.POST("/publish/today", publishAPI.PublishTodayUpdates)
+		admin.POST("/publish/range", publishAPI.PublishDateRange)
+		admin.POST("/publish/show/:id", publishAPI.PublishShow)
+		admin.POST("/publish/weekly", publishAPI.PublishWeekly)
+		admin.POST("/publish/monthly", publishAPI.PublishMonthly)
+		admin.GET("/publish/markdown/today", publishAPI.GenerateMarkdownToday)
+		admin.GET("/publish/markdown/show/:id", publishAPI.GenerateMarkdownShow)
+		admin.GET("/publish/markdown/range", publishAPI.GenerateMarkdownRange)
+		admin.GET("/publish/markdown/weekly", publishAPI.GenerateMarkdownWeekly)
 	}
 
 	return router
@@ -69,49 +156,4 @@ func corsMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		c.Next()
 	}
-}
-
-// Placeholder handlers - to be implemented
-func getShows(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"items": []interface{}{}, "total": 0}})
-}
-
-func getShow(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{}})
-}
-
-func createShow(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success"})
-}
-
-func updateShow(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success"})
-}
-
-func deleteShow(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success"})
-}
-
-func refreshShow(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success"})
-}
-
-func crawlShow(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success"})
-}
-
-func getCrawlLogs(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"items": []interface{}{}, "total": 0}})
-}
-
-func getCrawlerStatus(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"status": "idle"}})
-}
-
-func getTodayUpdates(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"updates": []interface{}{}}})
-}
-
-func getCalendar(c *gin.Context) {
-	c.JSON(200, gin.H{"code": 0, "message": "success", "data": gin.H{"days": []interface{}{}}})
 }

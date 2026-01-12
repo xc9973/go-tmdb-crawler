@@ -31,11 +31,18 @@ type AuthConfig struct {
 // - 环境变量和配置文件的secret
 // - 本地客户端可选密码
 // - 失败尝试限制和IP封禁
+// - JWT session token 验证
 type AdminAuth struct {
 	config         *AuthConfig
 	envSecret      string
 	mu             sync.Mutex
 	failedAttempts map[string]*attemptInfo
+	authService    AuthService
+}
+
+// AuthService 认证服务接口
+type AuthService interface {
+	ValidateToken(token string) (interface{}, error)
 }
 
 type attemptInfo struct {
@@ -104,8 +111,13 @@ func (a *AdminAuth) Middleware() gin.HandlerFunc {
 		// 检查是否配置了密钥
 		secretKey := a.config.SecretKey
 		if secretKey == "" && a.envSecret == "" {
-			// 未配置密钥,跳过认证(开发环境)
-			c.Next()
+			// 未配置密钥时拒绝管理访问，避免裸奔
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"code":    http.StatusServiceUnavailable,
+				"message": "管理员密钥未配置，已拒绝访问",
+				"error":   "admin_secret_not_configured",
+			})
+			c.Abort()
 			return
 		}
 
@@ -127,12 +139,19 @@ func (a *AdminAuth) Middleware() gin.HandlerFunc {
 		// 验证token
 		valid := false
 
-		// 1. 检查环境变量secret
-		if a.envSecret != "" && subtle.ConstantTimeCompare([]byte(token), []byte(a.envSecret)) == 1 {
+		// 1. 优先检查JWT session token (如果配置了authService)
+		if a.authService != nil {
+			if _, err := a.authService.ValidateToken(token); err == nil {
+				valid = true
+			}
+		}
+
+		// 2. 检查环境变量secret
+		if !valid && a.envSecret != "" && subtle.ConstantTimeCompare([]byte(token), []byte(a.envSecret)) == 1 {
 			valid = true
 		}
 
-		// 2. 检查配置文件secret
+		// 3. 检查配置文件secret
 		if !valid && secretKey != "" {
 			// 如果是bcrypt哈希,使用bcrypt验证
 			if strings.HasPrefix(secretKey, "$2") {
@@ -147,7 +166,7 @@ func (a *AdminAuth) Middleware() gin.HandlerFunc {
 			}
 		}
 
-		// 3. 检查本地密码(仅本地客户端)
+		// 4. 检查本地密码(仅本地客户端)
 		if !valid && localClient && a.config.LocalPassword != "" {
 			if subtle.ConstantTimeCompare([]byte(token), []byte(a.config.LocalPassword)) == 1 {
 				valid = true
@@ -178,10 +197,16 @@ func (a *AdminAuth) Middleware() gin.HandlerFunc {
 
 // extractToken 从请求中提取认证token
 // 支持以下方式:
-// 1. Authorization: Bearer <token>
-// 2. X-Admin-API-Key: <token>
+// 1. Cookie: session_token (JWT token)
+// 2. Authorization: Bearer <token>
+// 3. X-Admin-API-Key: <token>
 func (a *AdminAuth) extractToken(c *gin.Context) string {
-	// 尝试Authorization header
+	// 1. 优先尝试从cookie中获取JWT token
+	if token, err := c.Cookie("session_token"); err == nil && token != "" {
+		return token
+	}
+
+	// 2. 尝试Authorization header
 	if auth := c.GetHeader("Authorization"); auth != "" {
 		parts := strings.SplitN(auth, " ", 2)
 		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
@@ -191,7 +216,7 @@ func (a *AdminAuth) extractToken(c *gin.Context) string {
 		return strings.TrimSpace(auth)
 	}
 
-	// 尝试X-Admin-API-Key header
+	// 3. 尝试X-Admin-API-Key header
 	if key := c.GetHeader("X-Admin-API-Key"); key != "" {
 		return strings.TrimSpace(key)
 	}
@@ -206,6 +231,10 @@ func (a *AdminAuth) recordFailure(clientIP string) {
 
 	const maxFailures = 5
 	const banDuration = 30 * time.Minute
+
+	// 惰性清理：每次记录失败时，顺便清理少量过期记录
+	// 限制每次最多清理 10 条，避免影响性能
+	a.cleanupExpiredAttemptsLocked(10)
 
 	ai := a.failedAttempts[clientIP]
 	if ai == nil {
@@ -233,12 +262,104 @@ func (a *AdminAuth) clearFailure(clientIP string) {
 	}
 }
 
+// cleanupExpiredAttemptsLocked 清理过期记录（内部方法，已持有锁）
+// 限制每次最多清理 maxClean 条记录，避免影响性能
+func (a *AdminAuth) cleanupExpiredAttemptsLocked(maxClean int) {
+	now := time.Now()
+	const retentionPeriod = 24 * time.Hour // 保留24小时
+
+	cleaned := 0
+	for ip, ai := range a.failedAttempts {
+		if cleaned >= maxClean {
+			break
+		}
+
+		// 删除条件：
+		// 1. 最后活动时间超过保留期
+		// 2. 且当前未被封禁
+		if now.Sub(ai.lastActivity) > retentionPeriod &&
+			(ai.blockedUntil.IsZero() || now.After(ai.blockedUntil)) {
+			delete(a.failedAttempts, ip)
+			cleaned++
+		}
+	}
+}
+
+// GetFailedAttemptsStats 获取失败记录统计信息
+func (a *AdminAuth) GetFailedAttemptsStats() map[string]interface{} {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	activeCount := 0
+	blockedCount := 0
+	expiredCount := 0
+	now := time.Now()
+	const retentionPeriod = 24 * time.Hour
+
+	for _, ai := range a.failedAttempts {
+		if !ai.blockedUntil.IsZero() && now.Before(ai.blockedUntil) {
+			blockedCount++
+		} else if now.Sub(ai.lastActivity) > retentionPeriod {
+			expiredCount++
+		} else if ai.count > 0 {
+			activeCount++
+		}
+	}
+
+	return map[string]interface{}{
+		"total_records": len(a.failedAttempts),
+		"active_count":  activeCount,
+		"blocked_count": blockedCount,
+		"expired_count": expiredCount,
+	}
+}
+
+// SetAuthService 设置认证服务（用于JWT token验证）
+func (a *AdminAuth) SetAuthService(authService AuthService) {
+	a.authService = authService
+}
+
+// ValidateAPIKey 验证API Key（用于登录接口）
+func (a *AdminAuth) ValidateAPIKey(apiKey string) bool {
+	if apiKey == "" {
+		return false
+	}
+
+	// 1. 检查环境变量secret
+	if a.envSecret != "" && subtle.ConstantTimeCompare([]byte(apiKey), []byte(a.envSecret)) == 1 {
+		return true
+	}
+
+	// 2. 检查配置文件secret
+	secretKey := a.config.SecretKey
+	if secretKey != "" {
+		// 如果是bcrypt哈希,使用bcrypt验证
+		if strings.HasPrefix(secretKey, "$2") {
+			if err := bcrypt.CompareHashAndPassword([]byte(secretKey), []byte(apiKey)); err == nil {
+				return true
+			}
+		} else {
+			// 明文比较(不推荐,仅用于开发)
+			if subtle.ConstantTimeCompare([]byte(apiKey), []byte(secretKey)) == 1 {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // AdminAuthMiddleware 简化的管理员认证中间件(全局单例)
 var adminAuth *AdminAuth
 
 // InitAdminAuth 初始化管理员认证
 func InitAdminAuth(secretKey string, allowRemote bool) {
 	adminAuth = NewAdminAuth(secretKey, allowRemote)
+}
+
+// GetAdminAuth 获取管理员认证实例
+func GetAdminAuth() *AdminAuth {
+	return adminAuth
 }
 
 // AdminAuthMiddleware 返回管理员认证中间件(便捷函数)

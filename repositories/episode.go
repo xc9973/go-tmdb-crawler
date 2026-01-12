@@ -4,7 +4,9 @@ import (
 	"time"
 
 	"github.com/xc9973/go-tmdb-crawler/models"
+	"github.com/xc9973/go-tmdb-crawler/utils"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // EpisodeRepository defines the interface for episode data operations
@@ -21,15 +23,28 @@ type EpisodeRepository interface {
 	DeleteByShowID(showID uint) error
 	CountByShowID(showID uint) (int64, error)
 	Count() (int64, error)
+	SetTimezoneHelper(tzHelper *utils.TimezoneHelper)
 }
 
 type episodeRepository struct {
-	db *gorm.DB
+	db             *gorm.DB
+	timezoneHelper *utils.TimezoneHelper
 }
 
 // NewEpisodeRepository creates a new episode repository instance
 func NewEpisodeRepository(db *gorm.DB) EpisodeRepository {
-	return &episodeRepository{db: db}
+	// Default to UTC if no timezone specified
+	location, _ := time.LoadLocation("UTC")
+	return &episodeRepository{
+		db:             db,
+		timezoneHelper: utils.NewTimezoneHelper(location),
+	}
+}
+
+// SetTimezoneHelper sets the timezone helper for date operations
+// This should be called during application initialization
+func (r *episodeRepository) SetTimezoneHelper(tzHelper *utils.TimezoneHelper) {
+	r.timezoneHelper = tzHelper
 }
 
 // Create creates a new episode
@@ -42,7 +57,14 @@ func (r *episodeRepository) CreateBatch(episodes []*models.Episode) error {
 	if len(episodes) == 0 {
 		return nil
 	}
-	return r.db.CreateInBatches(episodes, 100).Error
+	return r.db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "show_id"},
+			{Name: "season_number"},
+			{Name: "episode_number"},
+		},
+		DoNothing: true,
+	}).CreateInBatches(episodes, 100).Error
 }
 
 // GetByID retrieves an episode by ID
@@ -74,9 +96,15 @@ func (r *episodeRepository) GetBySeason(showID uint, seasonNumber int) ([]*model
 }
 
 // GetByDateRange retrieves episodes within a date range
+// The range is inclusive: [startDate, endDate]
+// Dates are interpreted in the configured timezone
 func (r *episodeRepository) GetByDateRange(startDate, endDate time.Time) ([]*models.Episode, error) {
 	var episodes []*models.Episode
-	err := r.db.Where("air_date >= ? AND air_date <= ?", startDate, endDate).
+
+	// Use timezone-aware date boundaries
+	start, end := r.timezoneHelper.DateRange(startDate, endDate)
+
+	err := r.db.Where("air_date >= ? AND air_date <= ?", start, end).
 		Preload("Show").
 		Order("air_date ASC").
 		Find(&episodes).Error
@@ -84,12 +112,15 @@ func (r *episodeRepository) GetByDateRange(startDate, endDate time.Time) ([]*mod
 }
 
 // GetTodayUpdates retrieves episodes airing today
+// Today is determined based on the configured timezone
+// The range is [startOfDay, endOfDay) - start inclusive, end exclusive
 func (r *episodeRepository) GetTodayUpdates() ([]*models.Episode, error) {
 	var episodes []*models.Episode
-	today := time.Now().Truncate(24 * time.Hour)
-	tomorrow := today.Add(24 * time.Hour)
 
-	err := r.db.Where("air_date >= ? AND air_date < ?", today, tomorrow).
+	// Use timezone-aware today boundaries
+	start, end := r.timezoneHelper.TodayRange()
+
+	err := r.db.Where("air_date >= ? AND air_date < ?", start, end).
 		Preload("Show").
 		Order("air_date ASC").
 		Find(&episodes).Error

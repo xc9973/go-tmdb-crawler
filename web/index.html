@@ -3,6 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Content Security Policy - 防止XSS攻击 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+        img-src 'self' data: https: http:;
+        font-src 'self' https://cdn.jsdelivr.net;
+        connect-src 'self';
+        frame-ancestors 'none';
+    ">
     <title>TMDB剧集管理系统</title>
     
     <!-- Bootstrap 5 CSS -->
@@ -276,13 +286,10 @@
         }
 
         // 页面加载时检查认证状态
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 检查认证状态
+            await api.checkAuth();
             updateAuthUI();
-            
-            // 如果未认证,显示登录框
-            if (!api.isAuthenticated()) {
-                showLoginModal('请登录以使用管理功能');
-            }
         });
     </script>
 </body>

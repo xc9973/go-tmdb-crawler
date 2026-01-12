@@ -321,7 +321,9 @@ go test -cover ./...
 
 ### 爬虫控制
 - `POST /api/v1/crawler/show/:tmdb_id` - 爬取指定剧集
-- `POST /api/v1/crawler/refresh-all` - 刷新所有剧集
+- `POST /api/v1/crawler/refresh-all` - 刷新所有剧集 (异步, 返回 task_id)
+- `POST /api/v1/crawler/crawl-by-status` - 按状态爬取 (异步, 返回 task_id)
+- `GET /api/v1/crawler/tasks/:id` - 查询异步任务状态
 - `GET /api/v1/crawler/logs` - 获取爬取日志
 - `GET /api/v1/crawler/status` - 获取爬虫状态
 

@@ -7,10 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/xc9973/go-tmdb-crawler/api"
 	"github.com/xc9973/go-tmdb-crawler/config"
-	"github.com/xc9973/go-tmdb-crawler/repositories"
-	"github.com/xc9973/go-tmdb-crawler/services"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 var serverCmd = &cobra.Command{
@@ -24,29 +20,7 @@ var serverCmd = &cobra.Command{
 			log.Fatalf("Failed to load config: %v", err)
 		}
 
-		// Initialize database
-		var db *gorm.DB
-		if cfg.Database.Type == "sqlite" {
-			db, err = gorm.Open(sqlite.Open(cfg.Database.Path), &gorm.Config{})
-		} else {
-			// For PostgreSQL support in the future
-			log.Fatalf("PostgreSQL not yet implemented, use SQLite")
-		}
-
-		if err != nil {
-			log.Fatalf("Failed to connect to database: %v", err)
-		}
-
-		// Initialize repositories
-		showRepo := repositories.NewShowRepository(db)
-		episodeRepo := repositories.NewEpisodeRepository(db)
-		crawlLogRepo := repositories.NewCrawlLogRepository(db)
-
-		// Initialize services (placeholder for now)
-		_ = services.NewTMDBService(cfg.TMDB.APIKey, cfg.TMDB.BaseURL, cfg.TMDB.Language)
-		_ = services.NewCrawlerService(nil, showRepo, episodeRepo, crawlLogRepo)
-
-		// Initialize router
+		// Initialize router (SetupRouter handles all database and service initialization)
 		router := api.SetupRouter(cfg)
 
 		// Start server

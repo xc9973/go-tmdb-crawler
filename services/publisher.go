@@ -5,13 +5,15 @@ import (
 	"time"
 
 	"github.com/xc9973/go-tmdb-crawler/repositories"
+	"github.com/xc9973/go-tmdb-crawler/utils"
 )
 
 // PublisherService handles publishing to Telegraph
 type PublisherService struct {
-	telegraph   *TelegraphService
-	showRepo    repositories.ShowRepository
-	episodeRepo repositories.EpisodeRepository
+	telegraph      *TelegraphService
+	showRepo       repositories.ShowRepository
+	episodeRepo    repositories.EpisodeRepository
+	timezoneHelper *utils.TimezoneHelper
 }
 
 // NewPublisherService creates a new publisher service instance
@@ -19,11 +21,13 @@ func NewPublisherService(
 	telegraph *TelegraphService,
 	showRepo repositories.ShowRepository,
 	episodeRepo repositories.EpisodeRepository,
+	timezoneHelper *utils.TimezoneHelper,
 ) *PublisherService {
 	return &PublisherService{
-		telegraph:   telegraph,
-		showRepo:    showRepo,
-		episodeRepo: episodeRepo,
+		telegraph:      telegraph,
+		showRepo:       showRepo,
+		episodeRepo:    episodeRepo,
+		timezoneHelper: timezoneHelper,
 	}
 }
 
@@ -56,8 +60,8 @@ func (s *PublisherService) PublishTodayUpdates() (*PublishResult, error) {
 		}, fmt.Errorf("no episodes to publish")
 	}
 
-	// Generate title
-	today := time.Now().Format("2006-01-02")
+	// Generate title using configured timezone
+	today := s.timezoneHelper.NowInLocation().Format("2006-01-02")
 	title := fmt.Sprintf("今日更新 - %s", today)
 
 	// Generate content
@@ -204,16 +208,18 @@ func (s *PublisherService) PublishShow(showID uint) (*PublishResult, error) {
 }
 
 // PublishWeeklyUpdates publishes the last 7 days of updates
+// Uses the configured timezone for date calculations
 func (s *PublisherService) PublishWeeklyUpdates() (*PublishResult, error) {
-	today := time.Now().Truncate(24 * time.Hour)
+	today := s.timezoneHelper.TodayInLocation()
 	startDate := today.AddDate(0, 0, -7)
 
 	return s.PublishDateRange(startDate, today)
 }
 
 // PublishMonthlyUpdates publishes the last 30 days of updates
+// Uses the configured timezone for date calculations
 func (s *PublisherService) PublishMonthlyUpdates() (*PublishResult, error) {
-	today := time.Now().Truncate(24 * time.Hour)
+	today := s.timezoneHelper.TodayInLocation()
 	startDate := today.AddDate(0, 0, -30)
 
 	return s.PublishDateRange(startDate, today)

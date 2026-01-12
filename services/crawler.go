@@ -15,6 +15,7 @@ type CrawlerService struct {
 	showRepo    repositories.ShowRepository
 	episodeRepo repositories.EpisodeRepository
 	logRepo     repositories.CrawlLogRepository
+	taskRepo    repositories.CrawlTaskRepository
 }
 
 // NewCrawlerService creates a new crawler service instance
@@ -23,12 +24,14 @@ func NewCrawlerService(
 	showRepo repositories.ShowRepository,
 	episodeRepo repositories.EpisodeRepository,
 	logRepo repositories.CrawlLogRepository,
+	taskRepo repositories.CrawlTaskRepository,
 ) *CrawlerService {
 	return &CrawlerService{
 		tmdb:        tmdb,
 		showRepo:    showRepo,
 		episodeRepo: episodeRepo,
 		logRepo:     logRepo,
+		taskRepo:    taskRepo,
 	}
 }
 
@@ -222,6 +225,35 @@ func (s *CrawlerService) RefreshAll() error {
 	results := s.BatchCrawl(tmdbIDs)
 
 	// Check if all succeeded
+	for _, result := range results {
+		if !result.Success {
+			return fmt.Errorf("failed to crawl show %d: %w", result.TmdbID, result.Error)
+		}
+	}
+
+	return nil
+}
+
+// CrawlByStatus refreshes shows based on status filter
+func (s *CrawlerService) CrawlByStatus(status string) error {
+	var shows []*models.Show
+	var err error
+
+	if status == "returning" || status == "Returning Series" {
+		shows, err = s.showRepo.ListReturning()
+	} else {
+		shows, err = s.showRepo.ListAll()
+	}
+	if err != nil {
+		return fmt.Errorf("failed to list shows: %w", err)
+	}
+
+	tmdbIDs := make([]int, len(shows))
+	for i, show := range shows {
+		tmdbIDs[i] = show.TmdbID
+	}
+
+	results := s.BatchCrawl(tmdbIDs)
 	for _, result := range results {
 		if !result.Success {
 			return fmt.Errorf("failed to crawl show %d: %w", result.TmdbID, result.Error)

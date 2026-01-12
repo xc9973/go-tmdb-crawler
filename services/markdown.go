@@ -2,17 +2,20 @@ package services
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/xc9973/go-tmdb-crawler/models"
 	"github.com/xc9973/go-tmdb-crawler/repositories"
+	"github.com/xc9973/go-tmdb-crawler/utils"
 )
 
 // MarkdownService handles Markdown content generation
 type MarkdownService struct {
-	episodeRepo repositories.EpisodeRepository
-	showRepo    repositories.ShowRepository
+	episodeRepo    repositories.EpisodeRepository
+	showRepo       repositories.ShowRepository
+	timezoneHelper *utils.TimezoneHelper
 }
 
 // NewMarkdownService creates a new Markdown service instance
@@ -20,10 +23,19 @@ func NewMarkdownService(
 	episodeRepo repositories.EpisodeRepository,
 	showRepo repositories.ShowRepository,
 ) *MarkdownService {
+	// Default to UTC if no timezone specified
+	location, _ := time.LoadLocation("UTC")
 	return &MarkdownService{
-		episodeRepo: episodeRepo,
-		showRepo:    showRepo,
+		episodeRepo:    episodeRepo,
+		showRepo:       showRepo,
+		timezoneHelper: utils.NewTimezoneHelper(location),
 	}
+}
+
+// SetTimezoneHelper sets the timezone helper for date operations
+// This should be called during application initialization
+func (s *MarkdownService) SetTimezoneHelper(tzHelper *utils.TimezoneHelper) {
+	s.timezoneHelper = tzHelper
 }
 
 // GenerateTodayUpdates generates Markdown content for today's updates
@@ -34,6 +46,19 @@ func (s *MarkdownService) GenerateTodayUpdates() (string, error) {
 	}
 
 	return s.GenerateUpdateList(episodes), nil
+}
+
+// GenerateWeeklyUpdates generates Markdown content for weekly updates
+func (s *MarkdownService) GenerateWeeklyUpdates() (string, error) {
+	today := s.timezoneHelper.TodayInLocation()
+	startDate := today.AddDate(0, 0, -7)
+
+	episodes, err := s.episodeRepo.GetByDateRange(startDate, today)
+	if err != nil {
+		return "", fmt.Errorf("failed to get episodes: %w", err)
+	}
+
+	return s.GenerateDateRangeUpdates(startDate, today, episodes), nil
 }
 
 // GenerateUpdateList generates Markdown content for a list of episodes
@@ -47,14 +72,23 @@ func (s *MarkdownService) GenerateUpdateList(episodes []*models.Episode) string 
 	builder.WriteString("---\n\n")
 
 	// Group by show
-	showMap := make(map[string][]*models.Episode)
+	showMap := make(map[uint][]*models.Episode)
 	for _, episode := range episodes {
-		showName := episode.Show.Name
-		showMap[showName] = append(showMap[showName], episode)
+		if episode == nil {
+			continue
+		}
+		showMap[episode.ShowID] = append(showMap[episode.ShowID], episode)
 	}
 
 	// Generate content for each show
-	for showName, showEpisodes := range showMap {
+	for showID, showEpisodes := range showMap {
+		// Get show name safely
+		showName := fmt.Sprintf("ShowID:%d", showID)
+		if len(showEpisodes) > 0 && showEpisodes[0] != nil && showEpisodes[0].Show != nil {
+			if showEpisodes[0].Show.Name != "" {
+				showName = showEpisodes[0].Show.Name
+			}
+		}
 		builder.WriteString(fmt.Sprintf("## %s\n\n", showName))
 
 		for _, ep := range showEpisodes {
@@ -137,11 +171,12 @@ func (s *MarkdownService) GenerateShowContent(show *models.Show, episodes []*mod
 			seasonMap[int(ep.SeasonNumber)] = append(seasonMap[int(ep.SeasonNumber)], ep)
 		}
 
-		// Sort by season
+		// Sort by season (ascending order for stable output)
 		seasons := make([]int, 0, len(seasonMap))
 		for season := range seasonMap {
 			seasons = append(seasons, season)
 		}
+		sort.Ints(seasons)
 
 		for _, season := range seasons {
 			seasonEpisodes := seasonMap[season]
@@ -177,19 +212,6 @@ func (s *MarkdownService) GenerateShowContent(show *models.Show, episodes []*mod
 	return builder.String()
 }
 
-// GenerateWeeklyUpdates generates Markdown content for weekly updates
-func (s *MarkdownService) GenerateWeeklyUpdates() (string, error) {
-	today := time.Now().Truncate(24 * time.Hour)
-	startDate := today.AddDate(0, 0, -7)
-
-	episodes, err := s.episodeRepo.GetByDateRange(startDate, today)
-	if err != nil {
-		return "", fmt.Errorf("failed to get episodes: %w", err)
-	}
-
-	return s.GenerateDateRangeUpdates(startDate, today, episodes), nil
-}
-
 // GenerateDateRangeUpdates generates Markdown content for a date range
 func (s *MarkdownService) GenerateDateRangeUpdates(startDate, endDate time.Time, episodes []*models.Episode) string {
 	var builder strings.Builder
@@ -204,10 +226,11 @@ func (s *MarkdownService) GenerateDateRangeUpdates(startDate, endDate time.Time,
 	// Group by date
 	dateMap := make(map[string][]*models.Episode)
 	for _, episode := range episodes {
-		if episode.AirDate != nil {
-			dateStr := episode.AirDate.Format("2006-01-02")
-			dateMap[dateStr] = append(dateMap[dateStr], episode)
+		if episode == nil || episode.AirDate == nil {
+			continue
 		}
+		dateStr := episode.AirDate.Format("2006-01-02")
+		dateMap[dateStr] = append(dateMap[dateStr], episode)
 	}
 
 	// Generate content for each date
@@ -215,14 +238,23 @@ func (s *MarkdownService) GenerateDateRangeUpdates(startDate, endDate time.Time,
 		builder.WriteString(fmt.Sprintf("## 📅 %s\n\n", dateStr))
 
 		// Group by show
-		showMap := make(map[string][]*models.Episode)
+		showMap := make(map[uint][]*models.Episode)
 		for _, ep := range dateEpisodes {
-			showName := ep.Show.Name
-			showMap[showName] = append(showMap[showName], ep)
+			if ep == nil {
+				continue
+			}
+			showMap[ep.ShowID] = append(showMap[ep.ShowID], ep)
 		}
 
 		// List shows for this date
-		for showName, showEpisodes := range showMap {
+		for showID, showEpisodes := range showMap {
+			// Get show name safely
+			showName := fmt.Sprintf("ShowID:%d", showID)
+			if len(showEpisodes) > 0 && showEpisodes[0] != nil && showEpisodes[0].Show != nil {
+				if showEpisodes[0].Show.Name != "" {
+					showName = showEpisodes[0].Show.Name
+				}
+			}
 			builder.WriteString(fmt.Sprintf("### %s\n\n", showName))
 
 			for _, ep := range showEpisodes {

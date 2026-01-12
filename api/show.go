@@ -47,20 +47,8 @@ func (api *ShowAPI) ListShows(c *gin.Context) {
 	var err error
 
 	// Handle different query types
-	if search != "" {
-		shows, total, err = api.showRepo.Search(search, page, pageSize)
-	} else if status != "" {
-		// Filter by status
-		shows, total, err = api.showRepo.List(page, pageSize)
-		// Manual filtering (in production, add specific repo method)
-		filtered := make([]*models.Show, 0)
-		for _, show := range shows {
-			if show.Status == status {
-				filtered = append(filtered, show)
-			}
-		}
-		shows = filtered
-		total = int64(len(filtered))
+	if search != "" || status != "" {
+		shows, total, err = api.showRepo.ListFiltered(status, search, page, pageSize)
 	} else {
 		shows, total, err = api.showRepo.List(page, pageSize)
 	}

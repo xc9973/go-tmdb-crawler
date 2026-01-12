@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"strings"
+
 	"github.com/xc9973/go-tmdb-crawler/models"
 	"gorm.io/gorm"
 )
@@ -11,6 +13,8 @@ type ShowRepository interface {
 	GetByID(id uint) (*models.Show, error)
 	GetByTmdbID(tmdbID int) (*models.Show, error)
 	List(page, pageSize int) ([]*models.Show, int64, error)
+	ListByStatus(status string, page, pageSize int) ([]*models.Show, int64, error)
+	ListFiltered(status, search string, page, pageSize int) ([]*models.Show, int64, error)
 	ListAll() ([]*models.Show, error)
 	ListReturning() ([]*models.Show, error)
 	Update(show *models.Show) error
@@ -55,22 +59,17 @@ func (r *showRepository) GetByTmdbID(tmdbID int) (*models.Show, error) {
 
 // List retrieves shows with pagination
 func (r *showRepository) List(page, pageSize int) ([]*models.Show, int64, error) {
-	var shows []*models.Show
-	var total int64
+	return r.listWithFilters("", "", page, pageSize)
+}
 
-	// Count total
-	if err := r.db.Model(&models.Show{}).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
+// ListByStatus retrieves shows with pagination filtered by status
+func (r *showRepository) ListByStatus(status string, page, pageSize int) ([]*models.Show, int64, error) {
+	return r.listWithFilters(status, "", page, pageSize)
+}
 
-	// Get paginated data
-	offset := (page - 1) * pageSize
-	err := r.db.Order("created_at DESC").
-		Limit(pageSize).
-		Offset(offset).
-		Find(&shows).Error
-
-	return shows, total, err
+// ListFiltered retrieves shows with pagination filtered by status and search keyword
+func (r *showRepository) ListFiltered(status, search string, page, pageSize int) ([]*models.Show, int64, error) {
+	return r.listWithFilters(status, search, page, pageSize)
 }
 
 // ListAll retrieves all shows
@@ -108,20 +107,32 @@ func (r *showRepository) Count() (int64, error) {
 
 // Search searches shows by name or original name
 func (r *showRepository) Search(query string, page, pageSize int) ([]*models.Show, int64, error) {
+	return r.listWithFilters("", query, page, pageSize)
+}
+
+func (r *showRepository) listWithFilters(status, search string, page, pageSize int) ([]*models.Show, int64, error) {
 	var shows []*models.Show
 	var total int64
 
-	searchQuery := r.db.Model(&models.Show{}).
-		Where("name ILIKE ? OR original_name ILIKE ?", "%"+query+"%", "%"+query+"%")
+	query := r.db.Model(&models.Show{})
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if search != "" {
+		if r.db.Dialector.Name() == "sqlite" {
+			q := strings.ToLower(search)
+			query = query.Where("LOWER(name) LIKE ? OR LOWER(original_name) LIKE ?", "%"+q+"%", "%"+q+"%")
+		} else {
+			query = query.Where("name ILIKE ? OR original_name ILIKE ?", "%"+search+"%", "%"+search+"%")
+		}
+	}
 
-	// Count total
-	if err := searchQuery.Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Get paginated data
 	offset := (page - 1) * pageSize
-	err := searchQuery.Order("created_at DESC").
+	err := query.Order("created_at DESC").
 		Limit(pageSize).
 		Offset(offset).
 		Find(&shows).Error
