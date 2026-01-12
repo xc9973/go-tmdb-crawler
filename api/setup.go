@@ -106,6 +106,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 		// Crawler (只读状态)
 		api.GET("/crawler/status", crawlerAPI.GetHealthStatus)
+		api.GET("/crawler/search/tmdb", crawlerAPI.SearchTMDB)
 	}
 
 	// 管理员路由 - 需要认证

@@ -238,9 +238,16 @@ class APIClient {
      * 获取爬取状态
      */
     async getCrawlerStatus() {
-        return this.get('/crawler/status');
+    	return this.get('/crawler/status');
     }
-
+   
+    /**
+     * 搜索TMDB剧集
+     */
+    async searchTMDB(query, page = 1) {
+    	return this.get('/crawler/search/tmdb', { query, page });
+    }
+   
     // ========== 发布 API ==========
 
     /**

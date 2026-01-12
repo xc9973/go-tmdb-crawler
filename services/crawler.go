@@ -35,6 +35,11 @@ func NewCrawlerService(
 	}
 }
 
+// GetTMDBService returns the TMDB service instance
+func (s *CrawlerService) GetTMDBService() *TMDBService {
+	return s.tmdb
+}
+
 // CrawlResult represents the result of a crawl operation
 type CrawlResult struct {
 	TmdbID        int

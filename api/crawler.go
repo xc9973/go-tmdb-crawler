@@ -41,6 +41,64 @@ func NewCrawlerAPI(
 	}
 }
 
+// SearchTMDB handles GET /api/v1/crawler/search/tmdb
+func (api *CrawlerAPI) SearchTMDB(c *gin.Context) {
+	query := c.Query("query")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, dto.BadRequest("query parameter is required"))
+		return
+	}
+
+	// 如果query是纯数字，视为TMDB ID搜索
+	var tmdbID int
+	if _, err := fmt.Sscanf(query, "%d", &tmdbID); err == nil {
+		// 通过TMDB ID获取详情
+		tmdbShow, err := api.crawler.GetTMDBService().GetShowDetails(tmdbID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, dto.InternalError("TMDB搜索失败: "+err.Error()))
+			return
+		}
+
+		// 转换为搜索结果格式
+		result := map[string]interface{}{
+			"page": 1,
+			"results": []map[string]interface{}{
+				{
+					"id":             tmdbShow.ID,
+					"name":           tmdbShow.Name,
+					"original_name":  tmdbShow.OriginalName,
+					"first_air_date": tmdbShow.FirstAirDate,
+					"poster_path":    tmdbShow.PosterPath,
+					"backdrop_path":  tmdbShow.BackdropPath,
+					"overview":       tmdbShow.Overview,
+					"vote_average":   tmdbShow.VoteAverage,
+					"popularity":     tmdbShow.Popularity,
+				},
+			},
+			"total_pages":   1,
+			"total_results": 1,
+		}
+		c.JSON(http.StatusOK, dto.Success(result))
+		return
+	}
+
+	// 否则按名称搜索
+	page := 1
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	searchResult, err := api.crawler.GetTMDBService().SearchShow(query, page)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.InternalError("TMDB搜索失败: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Success(searchResult))
+}
+
 // CrawlShow handles POST /api/v1/crawler/show/:tmdb_id
 func (api *CrawlerAPI) CrawlShow(c *gin.Context) {
 	tmdbIDStr := c.Param("tmdb_id")
@@ -50,17 +108,23 @@ func (api *CrawlerAPI) CrawlShow(c *gin.Context) {
 		return
 	}
 
+	// 添加日志
+	fmt.Printf("[CrawlShow] 开始爬取 TMDB ID: %d\n", tmdbID)
+
 	if err := api.crawler.CrawlShow(tmdbID); err != nil {
+		fmt.Printf("[CrawlShow] 爬取失败: %v\n", err)
 		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
 		return
 	}
 
 	show, err := api.showRepo.GetByTmdbID(tmdbID)
 	if err != nil {
+		fmt.Printf("[CrawlShow] 获取show失败: %v\n", err)
 		c.JSON(http.StatusInternalServerError, dto.InternalError("failed to load show after crawl"))
 		return
 	}
 
+	fmt.Printf("[CrawlShow] 爬取成功, show: %+v\n", show)
 	c.JSON(http.StatusOK, dto.SuccessWithMessage("Show crawled successfully", show))
 }
 

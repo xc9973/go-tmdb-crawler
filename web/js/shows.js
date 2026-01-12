@@ -337,9 +337,28 @@ class ShowsPage {
             return;
         }
 
-        // 这里应该调用TMDB API搜索
-        // 暂时显示提示信息
-        this.showInfo('请手动填写剧集信息,或使用后端API搜索');
+        try {
+            this.showLoading(true);
+            const response = await api.searchTMDB(tmdbId);
+
+            if (response.code === 0 && response.data.results && response.data.results.length > 0) {
+                const show = response.data.results[0];
+                
+                // 填充表单
+                document.getElementById('showName').value = show.name || '';
+                document.getElementById('originalName').value = show.original_name || '';
+                document.getElementById('showOverview').value = show.overview || '';
+                document.getElementById('showStatus').value = 'Returning Series';
+                
+                this.showSuccess('TMDB搜索成功');
+            } else {
+                this.showError('TMDB搜索失败: ' + (response.message || '未找到相关剧集'));
+            }
+        } catch (error) {
+            this.showError('TMDB搜索失败: ' + error.message);
+        } finally {
+            this.showLoading(false);
+        }
     }
 
     toggleSelectAll(checked) {
