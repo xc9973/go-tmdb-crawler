@@ -19,7 +19,7 @@ class TodayPage {
         // 日期选择
         document.getElementById('dateInput').addEventListener('change', (e) => {
             this.selectedDate = new Date(e.target.value);
-            this.loadTodayUpdates();
+            this.loadDateUpdates(this.selectedDate);
         });
 
         // 快捷选择按钮
@@ -41,7 +41,7 @@ class TodayPage {
 
         // 操作按钮
         document.getElementById('refreshBtn').addEventListener('click', () => {
-            this.loadTodayUpdates();
+            this.loadDateUpdates(this.selectedDate);
         });
 
         document.getElementById('publishTelegraphBtn').addEventListener('click', () => {
@@ -188,7 +188,7 @@ class TodayPage {
 
     selectDate(type) {
         const today = new Date();
-        
+
         switch(type) {
             case 'today':
                 this.selectedDate = today;
@@ -200,7 +200,54 @@ class TodayPage {
         }
 
         document.getElementById('dateInput').value = this.formatDateForInput(this.selectedDate);
-        this.loadTodayUpdates();
+        this.loadDateUpdates(this.selectedDate);
+    }
+
+    async loadDateUpdates(date) {
+        this.showLoading(true);
+
+        try {
+            const dateStr = this.formatDateForInput(date);
+            const response = await api.getDateRangeUpdates(dateStr, dateStr);
+
+            if (response.code === 0) {
+                const updates = response.data || [];
+
+                // 按剧集分组
+                const showMap = new Map();
+
+                updates.forEach(update => {
+                    const showId = update.show_id;
+
+                    if (!showMap.has(showId)) {
+                        showMap.set(showId, {
+                            id: showId,
+                            name: update.show_name,
+                            poster_path: update.still_path,
+                            status: 'Returning Series',
+                            vote_average: update.vote_average,
+                            first_air_date: update.air_date,
+                            episode_count: 0,
+                            episodes: []
+                        });
+                    }
+
+                    const show = showMap.get(showId);
+                    show.episodes.push(update);
+                    show.episode_count++;
+                });
+
+                this.shows = Array.from(showMap.values());
+                this.renderShows();
+                this.updateStats();
+            } else {
+                this.showError('加载失败: ' + response.message);
+            }
+        } catch (error) {
+            this.showError('加载失败: ' + error.message);
+        } finally {
+            this.showLoading(false);
+        }
     }
 
     async loadWeekUpdates() {
@@ -236,7 +283,7 @@ class TodayPage {
             const response = await api.refreshShow(id);
             if (response.code === 0) {
                 this.showSuccess('刷新成功');
-                this.loadTodayUpdates();
+                this.loadDateUpdates(this.selectedDate);
             } else {
                 this.showError('刷新失败: ' + response.message);
             }
