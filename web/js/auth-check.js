@@ -20,7 +20,10 @@
         // 不需要认证的页面路径
         publicPages: [
             '/login.html',
-            '/welcome.html'
+            '/welcome.html',
+            '/index.html',
+            '/show_detail.html',
+            '/today.html'
         ],
         // 认证检查间隔(毫秒),0表示只检查一次
         checkInterval: 0,
