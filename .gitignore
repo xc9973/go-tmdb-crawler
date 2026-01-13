@@ -52,3 +52,6 @@ temp/
 
 # 借鉴代码(不推送到GitHub)
 借鉴代码/
+
+# Git worktrees
+.worktrees/
