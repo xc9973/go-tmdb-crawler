@@ -119,6 +119,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		// Shows (只读)
 		api.GET("/shows", showAPI.ListShows)
 		api.GET("/shows/:id", showAPI.GetShow)
+		api.GET("/shows/:id/episodes", showAPI.GetShowEpisodes)
 
 		// Calendar (只读)
 		api.GET("/calendar/today", crawlerAPI.GetTodayUpdates)

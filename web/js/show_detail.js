@@ -163,10 +163,11 @@ class ShowDetailPage {
                     <table class="table table-sm table-hover">
                         <thead>
                             <tr>
-                                <th width="15%">集数</th>
-                                <th width="45%">名称</th>
-                                <th width="20%">播出日期</th>
-                                <th width="20%">评分</th>
+                                <th width="12%">集数</th>
+                                <th width="38%">名称</th>
+                                <th width="18%">播出日期</th>
+                                <th width="17%">评分</th>
+                                <th width="15%">更新时间</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -190,13 +191,14 @@ class ShowDetailPage {
                                     </span>
                                 ` : '-'}
                             </td>
+                            <td><small class="text-muted">${this.formatDateTime(ep.updated_at)}</small></td>
                         </tr>
                     `;
                 });
             } else {
                 tableHTML += `
                     <tr>
-                        <td colspan="4" class="text-center text-muted">
+                        <td colspan="5" class="text-center text-muted">
                             暂无数据
                         </td>
                     </tr>
