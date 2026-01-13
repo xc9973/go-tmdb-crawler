@@ -59,10 +59,12 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Set timezone helper for episode repository
 	episodeRepo.SetTimezoneHelper(timezoneHelper)
 
-	// Auto migrate all database tables
+	// Auto migrate database tables
+	// Note: Episode table structure is managed by SQL migrations (see migrations/001_init_schema.sql)
+	// We only AutoMigrate tables that don't have complex constraints
 	if err := db.AutoMigrate(
 		&models.Show{},
-		&models.Episode{},
+		// &models.Episode{}, // Skip - managed by SQL migrations
 		&models.CrawlLog{},
 		&models.CrawlTask{},
 		&models.TelegraphPost{},
