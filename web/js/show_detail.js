@@ -409,6 +409,13 @@ class ShowDetailPage {
         const date = new Date(dateStr);
         return date.toLocaleString('zh-CN');
     }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 }
 
 // 初始化页面
