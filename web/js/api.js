@@ -96,25 +96,52 @@ class APIClient {
         }
 
         try {
-            const response = await fetch(`${this.baseURL}${url}`, finalOptions);
-            
-            // 处理401未认证
-            if (response.status === 401) {
-                this.isAuthenticated = false;
-                // 触发认证失败事件
-                window.dispatchEvent(new CustomEvent('auth-required'));
-                throw new Error('需要登录认证');
-            }
-            
-            const data = await response.json();
+            // 判断是否为幂等请求（GET/PUT/DELETE 通常安全）
+            const isIdempotent = ['GET', 'HEAD', 'PUT', 'DELETE'].includes((options.method || 'GET').toUpperCase());
+            const autoRetry = options.retry !== undefined ? options.retry : isIdempotent;
 
-            if (!response.ok) {
-                throw new Error(data.message || '请求失败');
-            }
+            return await feedback.retry.execute(async () => {
+                const response = await fetch(`${this.baseURL}${url}`, finalOptions);
 
-            return data;
+                // 处理401未认证
+                if (response.status === 401) {
+                    this.isAuthenticated = false;
+                    // 触发认证失败事件
+                    window.dispatchEvent(new CustomEvent('auth-required'));
+                    const error = new Error('Unauthorized');
+                    error.status = 401;
+                    throw error;
+                }
+
+                // 解析 JSON，增强健壮性
+                let data;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    // 如果响应不是 JSON（例如服务器返回 HTML 错误页），使用文本消息
+                    const text = await response.text();
+                    data = { message: text || '无法解析响应' };
+                }
+
+                if (!response.ok) {
+                    const error = new Error(data.message || 'Internal Server Error');
+                    error.status = response.status;
+                    throw error;
+                }
+
+                return data;
+            }, {
+                shouldRetry: (error) => {
+                    // 仅在 autoRetry 为 true 时才重试
+                    if (!autoRetry) return false;
+                    // 仅重试网络错误 (无 status) 或 5xx 错误
+                    return !error.status || error.status >= 500;
+                }
+            });
         } catch (error) {
-            console.error('API请求错误:', error);
+            // 转换友好消息
+            error.message = feedback.error.getFriendlyMessage(error.message);
+            console.error('API请求最终错误:', error);
             throw error;
         }
     }

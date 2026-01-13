@@ -267,7 +267,10 @@ class ShowsPage {
     }
 
     async refreshShow(id) {
-        if (!confirm('确定要刷新该剧集数据吗?')) return;
+        if (!await feedback.confirm.show({
+            title: '刷新剧集',
+            message: '确定要刷新该剧集数据吗?'
+        })) return;
 
         try {
             this.showLoading(true);
@@ -287,7 +290,11 @@ class ShowsPage {
     }
 
     async deleteShow(id) {
-        if (!confirm('确定要删除该剧集吗?此操作不可恢复!')) return;
+        if (!await feedback.confirm.show({
+            title: '删除剧集',
+            message: '确定要删除该剧集吗?此操作不可恢复!',
+            confirmClass: 'btn-danger'
+        })) return;
 
         try {
             this.showLoading(true);
@@ -309,7 +316,10 @@ class ShowsPage {
     }
 
     async refreshAll() {
-        if (!confirm('确定要刷新所有剧集吗?这可能需要一些时间...')) return;
+        if (!await feedback.confirm.show({
+            title: '刷新全部',
+            message: '确定要刷新所有剧集吗?这可能需要一些时间...'
+        })) return;
 
         try {
             this.showLoading(true);
@@ -426,41 +436,68 @@ class ShowsPage {
     }
 
     async batchRefresh() {
-        if (!confirm(`确定要刷新选中的 ${this.selectedShows.size} 个剧集吗?`)) return;
+        if (!await feedback.confirm.show({
+            title: '批量刷新',
+            message: `确定要刷新选中的 ${this.selectedShows.size} 个剧集吗?`
+        })) return;
 
+        const total = this.selectedShows.size;
+        feedback.progress.start(total, '正在批量刷新剧集...');
+
+        let current = 0;
         try {
-            this.showLoading(true);
-            // 批量刷新逻辑
             for (const id of this.selectedShows) {
-                await api.refreshShow(id);
+                current++;
+                try {
+                    await api.refreshShow(id);
+                    feedback.progress.update(current, true);
+                } catch (error) {
+                    console.error(`刷新剧集 ${id} 失败:`, error);
+                    feedback.progress.update(current, false);
+                }
             }
 
-            this.showSuccess('批量刷新完成');
+            feedback.progress.complete(`批量刷新完成！成功: ${feedback.progress.success}, 失败: ${feedback.progress.failed}`);
+            setTimeout(() => feedback.progress.hide(), 5000);
+
             this.clearSelection();
             this.loadShows();
         } catch (error) {
-            this.showError('批量刷新失败: ' + error.message);
-        } finally {
-            this.showLoading(false);
+            this.showError('批量刷新过程中出错: ' + error.message);
         }
     }
 
     async batchDelete() {
-        if (!confirm(`确定要删除选中的 ${this.selectedShows.size} 个剧集吗?此操作不可恢复!`)) return;
+        if (!await feedback.confirm.show({
+            title: '批量删除',
+            message: `确定要删除选中的 ${this.selectedShows.size} 个剧集吗?此操作不可恢复!`,
+            confirmClass: 'btn-danger'
+        })) return;
 
+        const total = this.selectedShows.size;
+        feedback.progress.start(total, '正在批量删除剧集...');
+
+        let current = 0;
         try {
-            this.showLoading(true);
             for (const id of this.selectedShows) {
-                await api.deleteShow(id);
+                current++;
+                try {
+                    await api.deleteShow(id);
+                    this.selectedShows.delete(id);
+                    feedback.progress.update(current, true);
+                } catch (error) {
+                    console.error(`删除剧集 ${id} 失败:`, error);
+                    feedback.progress.update(current, false);
+                }
             }
 
-            this.showSuccess('批量删除完成');
+            feedback.progress.complete(`批量删除完成！成功: ${feedback.progress.success}, 失败: ${feedback.progress.failed}`);
+            setTimeout(() => feedback.progress.hide(), 5000);
+
             this.clearSelection();
             this.loadShows();
         } catch (error) {
-            this.showError('批量删除失败: ' + error.message);
-        } finally {
-            this.showLoading(false);
+            this.showError('批量删除过程中出错: ' + error.message);
         }
     }
 
