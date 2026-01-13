@@ -138,12 +138,12 @@ class ShowsPage {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>
-                    <input type="checkbox" class="form-check-input show-checkbox" 
+                    <input type="checkbox" class="form-check-input show-checkbox"
                            data-id="${show.id}" ${this.selectedShows.has(show.id) ? 'checked' : ''}>
                 </td>
                 <td>${show.id}</td>
                 <td>
-                    <a href="#" class="text-decoration-none" data-show-id="${show.id}">
+                    <a href="#" class="text-decoration-none show-name-link" data-show-id="${show.id}">
                         <strong>${this.escapeHtml(show.name)}</strong>
                     </a>
                 </td>
@@ -172,6 +172,13 @@ class ShowsPage {
                 this.updateBatchActions();
             });
 
+            // 绑定剧集名称点击事件
+            const nameLink = tr.querySelector('.show-name-link');
+            nameLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.viewShowDetail(show.id);
+            });
+
             tbody.appendChild(tr);
         });
 
@@ -188,14 +195,20 @@ class ShowsPage {
         // 上一页
         const prevLi = document.createElement('li');
         prevLi.className = `page-item ${this.currentPage === 1 ? 'disabled' : ''}`;
-        prevLi.innerHTML = '<a class="page-link" href="#">&laquo;</a>';
-        prevLi.addEventListener('click', (e) => {
+        
+        const prevLink = document.createElement('a');
+        prevLink.className = 'page-link';
+        prevLink.href = '#';
+        prevLink.innerHTML = '&laquo;';
+        prevLink.addEventListener('click', (e) => {
             e.preventDefault();
             if (this.currentPage > 1) {
                 this.currentPage--;
                 this.loadShows();
             }
         });
+        
+        prevLi.appendChild(prevLink);
         pagination.appendChild(prevLi);
 
         // 页码
@@ -205,26 +218,38 @@ class ShowsPage {
         for (let i = startPage; i <= endPage; i++) {
             const li = document.createElement('li');
             li.className = `page-item ${i === this.currentPage ? 'active' : ''}`;
-            li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-            li.addEventListener('click', (e) => {
+            
+            const link = document.createElement('a');
+            link.className = 'page-link';
+            link.href = '#';
+            link.textContent = i;
+            link.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.currentPage = i;
                 this.loadShows();
             });
+            
+            li.appendChild(link);
             pagination.appendChild(li);
         }
 
         // 下一页
         const nextLi = document.createElement('li');
         nextLi.className = `page-item ${this.currentPage === this.totalPages ? 'disabled' : ''}`;
-        nextLi.innerHTML = '<a class="page-link" href="#">&raquo;</a>';
-        nextLi.addEventListener('click', (e) => {
+        
+        const nextLink = document.createElement('a');
+        nextLink.className = 'page-link';
+        nextLink.href = '#';
+        nextLink.innerHTML = '&raquo;';
+        nextLink.addEventListener('click', (e) => {
             e.preventDefault();
             if (this.currentPage < this.totalPages) {
                 this.currentPage++;
                 this.loadShows();
             }
         });
+        
+        nextLi.appendChild(nextLink);
         pagination.appendChild(nextLi);
     }
 
@@ -276,6 +301,11 @@ class ShowsPage {
         } finally {
             this.showLoading(false);
         }
+    }
+
+    viewShowDetail(id) {
+        // 跳转到剧集详情页面
+        window.location.href = `show_detail.html?id=${id}`;
     }
 
     async refreshAll() {
