@@ -30,7 +30,8 @@ func NewAuthHandler(authService *services.AuthService, adminAuth AdminAuthValida
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	APIKey string `json:"api_key" binding:"required"`
+	APIKey     string `json:"api_key" binding:"required"`
+	RememberMe bool   `json:"remember_me"`
 }
 
 // LoginResponse 登录响应
@@ -86,25 +87,36 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// 计算cookie过期时间
+	// 如果选择"记住我",则使用session的过期时间(30天)
+	// 否则使用会话cookie(浏览器关闭后失效)
+	maxAge := int(session.ExpiresAt.Sub(time.Now()).Seconds())
+	if !req.RememberMe {
+		maxAge = 0 // 会话cookie
+	}
+
 	// 设置httpOnly cookie
 	c.SetSameSite(http.SameSiteStrictMode)
 	c.SetCookie(
 		"session_token",
 		token,
-		int(session.ExpiresAt.Sub(time.Now()).Seconds()),
+		maxAge,
 		"/",
 		"",
-		false, // secure (生产环境应为true)
-		true,  // httpOnly
+		false, // secure (生产环境应为true,需要HTTPS)
+		true,  // httpOnly - 防止XSS攻击
 	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "登录成功",
+		"success": true,
 		"data": LoginResponse{
-			Token:     token,
-			ExpiresAt: session.ExpiresAt,
-			SessionID: extractSessionID(token),
+			Token:        token,
+			ExpiresAt:    session.ExpiresAt,
+			SessionID:    extractSessionID(token),
+			IsFirstLogin: true, // 首次登录标识
+			Message:      "登录成功",
 		},
 	})
 }
@@ -195,6 +207,9 @@ func (h *AuthHandler) GetSessionInfo(c *gin.Context) {
 			"code":    401,
 			"message": "未登录",
 			"error":   "not_authenticated",
+			"data": gin.H{
+				"authenticated": false,
+			},
 		})
 		return
 	}
@@ -206,6 +221,9 @@ func (h *AuthHandler) GetSessionInfo(c *gin.Context) {
 			"code":    401,
 			"message": "Token无效或已过期",
 			"error":   err.Error(),
+			"data": gin.H{
+				"authenticated": false,
+			},
 		})
 		return
 	}
@@ -216,12 +234,13 @@ func (h *AuthHandler) GetSessionInfo(c *gin.Context) {
 		"code":    200,
 		"message": "获取成功",
 		"data": gin.H{
-			"session_id":  extractSessionID(token),
-			"created_at":  session.CreatedAt,
-			"expires_at":  session.ExpiresAt,
-			"last_active": session.LastActive,
-			"user_agent":  session.UserAgent,
-			"ip":          session.IP,
+			"authenticated": true,
+			"session_id":    extractSessionID(token),
+			"created_at":    session.CreatedAt,
+			"expires_at":    session.ExpiresAt,
+			"last_active":   session.LastActive,
+			"user_agent":    session.UserAgent,
+			"ip":            session.IP,
 		},
 	})
 }

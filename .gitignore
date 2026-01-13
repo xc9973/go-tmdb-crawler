@@ -49,3 +49,6 @@ dist/
 # Temporary files
 tmp/
 temp/
+
+# 借鉴代码(不推送到GitHub)
+借鉴代码/
