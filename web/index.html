@@ -257,45 +257,16 @@
     <script src="js/auth-check.js"></script>
     <!-- Custom JS -->
     <script src="js/api.js"></script>
+    <script src="js/auth-ui.js"></script>
     <script src="js/modal.js"></script>
     <script src="js/shows.js"></script>
     
-    <!-- 认证UI更新 -->
+    <!-- 页面初始化 -->
     <script>
-        // 更新登录按钮状态
-        function updateAuthUI() {
-            const btn = document.getElementById('loginLogoutBtn');
-            if (api.isAuthenticated()) {
-                btn.innerHTML = '<i class="bi bi-box-arrow-right"></i> 退出';
-                btn.className = 'btn btn-outline-warning btn-sm';
-            } else {
-                btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> 登录';
-                btn.className = 'btn btn-outline-light btn-sm';
-            }
-        }
-
-        // 处理登录/退出点击
-        function handleAuthClick() {
-            if (api.isAuthenticated()) {
-                if (confirm('确定要退出登录吗?')) {
-                    api.logout();
-                    updateAuthUI();
-                    window.location.href = '/login.html';
-                }
-            } else {
-                // 跳转到登录页
-                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
-            }
-        }
-
-        // 页面加载时更新UI
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 更新认证UI
-            updateAuthUI();
-            
-            // 加载页面内容
-            loadShows();
-        });
+    document.addEventListener('DOMContentLoaded', async function() {
+        // 加载页面内容
+        loadShows();
+    });
     </script>
 </body>
 </html>

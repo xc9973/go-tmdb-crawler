@@ -23,7 +23,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="/">剧集列表</a>
                     </li>
@@ -32,6 +32,14 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link active" href="/logs.html">爬取日志</a>
+                    </li>
+                </ul>
+                <!-- 认证状态 -->
+                <ul class="navbar-nav">
+                    <li class="nav-item" id="authStatus">
+                        <button class="btn btn-outline-light btn-sm" id="loginLogoutBtn" onclick="handleAuthClick()">
+                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                        </button>
                     </li>
                 </ul>
             </div>
@@ -157,11 +165,12 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
 
     <!-- Bootstrap 5 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap/5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Auth Check - 强制认证 -->
     <script src="js/auth-check.js"></script>
     <!-- Custom JS -->
     <script src="js/api.js"></script>
+    <script src="js/auth-ui.js"></script>
     <script src="js/logs.js"></script>
 </body>
 </html>
