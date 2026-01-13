@@ -252,10 +252,51 @@ class TodayPage {
 
     async loadWeekUpdates() {
         this.showLoading(true);
+
         try {
-            const response = await api.getWeeklyMarkdown();
-            // 解析markdown并显示
-            this.showSuccess('本周更新加载成功');
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - dayOfWeek);
+            const endOfWeek = new Date(today);
+            endOfWeek.setDate(today.getDate() + (6 - dayOfWeek));
+
+            const startDate = this.formatDateForInput(startOfWeek);
+            const endDate = this.formatDateForInput(endOfWeek);
+
+            const response = await api.getDateRangeUpdates(startDate, endDate);
+
+            if (response.code === 0) {
+                const updates = response.data || [];
+
+                const showMap = new Map();
+                updates.forEach(update => {
+                    const showId = update.show_id;
+                    if (!showMap.has(showId)) {
+                        showMap.set(showId, {
+                            id: showId,
+                            name: update.show_name,
+                            poster_path: update.still_path,
+                            status: 'Returning Series',
+                            vote_average: update.vote_average,
+                            first_air_date: update.air_date,
+                            episode_count: 0,
+                            episodes: []
+                        });
+                    }
+                    const show = showMap.get(showId);
+                    show.episodes.push(update);
+                    show.episode_count++;
+                });
+
+                this.shows = Array.from(showMap.values());
+                this.renderShows();
+                this.updateStats();
+                this.selectedDate = startOfWeek;
+                document.getElementById('dateInput').value = startDate;
+            } else {
+                this.showError('加载失败: ' + response.message);
+            }
         } catch (error) {
             this.showError('加载失败: ' + error.message);
         } finally {
@@ -265,11 +306,47 @@ class TodayPage {
 
     async loadMonthUpdates() {
         this.showLoading(true);
+
         try {
-            const response = await api.publishMonthly();
+            const today = new Date();
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            const startDate = this.formatDateForInput(startOfMonth);
+            const endDate = this.formatDateForInput(endOfMonth);
+
+            const response = await api.getDateRangeUpdates(startDate, endDate);
+
             if (response.code === 0) {
-                this.shows = response.data.shows || [];
+                const updates = response.data || [];
+
+                const showMap = new Map();
+                updates.forEach(update => {
+                    const showId = update.show_id;
+                    if (!showMap.has(showId)) {
+                        showMap.set(showId, {
+                            id: showId,
+                            name: update.show_name,
+                            poster_path: update.still_path,
+                            status: 'Returning Series',
+                            vote_average: update.vote_average,
+                            first_air_date: update.air_date,
+                            episode_count: 0,
+                            episodes: []
+                        });
+                    }
+                    const show = showMap.get(showId);
+                    show.episodes.push(update);
+                    show.episode_count++;
+                });
+
+                this.shows = Array.from(showMap.values());
                 this.renderShows();
+                this.updateStats();
+                this.selectedDate = startOfMonth;
+                document.getElementById('dateInput').value = startDate;
+            } else {
+                this.showError('加载失败: ' + response.message);
             }
         } catch (error) {
             this.showError('加载失败: ' + error.message);
