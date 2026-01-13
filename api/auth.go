@@ -35,9 +35,11 @@ type LoginRequest struct {
 
 // LoginResponse 登录响应
 type LoginResponse struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expires_at"`
-	SessionID string    `json:"session_id"`
+	Token        string    `json:"token"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	SessionID    string    `json:"session_id"`
+	IsFirstLogin bool      `json:"is_first_login"`
+	Message      string    `json:"message,omitempty"`
 }
 
 // RefreshTokenResponse 刷新token响应

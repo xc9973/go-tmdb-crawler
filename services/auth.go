@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"sync"
 	"time"
 
@@ -24,12 +25,14 @@ type AuthService struct {
 
 // SessionInfo 会话信息
 type SessionInfo struct {
-	Token      string
-	CreatedAt  time.Time
-	ExpiresAt  time.Time
-	LastActive time.Time
-	UserAgent  string
-	IP         string
+	Token             string
+	CreatedAt         time.Time
+	ExpiresAt         time.Time
+	LastActive        time.Time
+	UserAgent         string
+	IP                string
+	IsFirstLogin      bool
+	DeviceFingerprint string
 }
 
 // SessionInfoAlias SessionInfo的别名，用于导出
@@ -45,7 +48,7 @@ type JWTClaims struct {
 func NewAuthService(secretKey string, db *gorm.DB) *AuthService {
 	return &AuthService{
 		secretKey:       secretKey,
-		sessionDuration: 2 * time.Hour, // 默认2小时
+		sessionDuration: 30 * 24 * time.Hour, // 默认30天，方便用户长期保持登录
 		db:              db,
 		sessions:        make(map[string]*SessionInfo),
 	}
@@ -69,15 +72,23 @@ func (s *AuthService) Login(apiKey string, userAgent, ip string) (string, *Sessi
 		return "", nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
+	// 生成设备指纹
+	deviceFingerprint := s.generateDeviceFingerprint(userAgent, ip)
+
+	// 检查是否是首次登录（检查是否有相同设备指纹的会话）
+	isFirstLogin := s.checkFirstLogin(deviceFingerprint)
+
 	// 创建session
 	now := time.Now()
 	session := &SessionInfo{
-		Token:      token,
-		CreatedAt:  now,
-		ExpiresAt:  now.Add(s.sessionDuration),
-		LastActive: now,
-		UserAgent:  userAgent,
-		IP:         ip,
+		Token:             token,
+		CreatedAt:         now,
+		ExpiresAt:         now.Add(s.sessionDuration),
+		LastActive:        now,
+		UserAgent:         userAgent,
+		IP:                ip,
+		IsFirstLogin:      isFirstLogin,
+		DeviceFingerprint: deviceFingerprint,
 	}
 
 	// 保存session
@@ -87,13 +98,15 @@ func (s *AuthService) Login(apiKey string, userAgent, ip string) (string, *Sessi
 
 	if s.db != nil {
 		record := &models.Session{
-			SessionID:  sessionID,
-			Token:      token,
-			CreatedAt:  session.CreatedAt,
-			ExpiresAt:  session.ExpiresAt,
-			LastActive: session.LastActive,
-			UserAgent:  session.UserAgent,
-			IP:         session.IP,
+			SessionID:         sessionID,
+			Token:             token,
+			CreatedAt:         session.CreatedAt,
+			ExpiresAt:         session.ExpiresAt,
+			LastActive:        session.LastActive,
+			UserAgent:         session.UserAgent,
+			IP:                session.IP,
+			IsFirstLogin:      isFirstLogin,
+			DeviceFingerprint: deviceFingerprint,
 		}
 		if err := s.db.Create(record).Error; err != nil {
 			return "", nil, fmt.Errorf("failed to persist session: %w", err)
@@ -335,4 +348,38 @@ func (s *AuthService) generateSessionID() (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// generateDeviceFingerprint 生成设备指纹
+func (s *AuthService) generateDeviceFingerprint(userAgent, ip string) string {
+	// 简单的设备指纹生成：基于User-Agent和IP的哈希
+	// 实际生产环境可以使用更复杂的算法
+	data := fmt.Sprintf("%s|%s", userAgent, ip)
+	h := fnv.New32a()
+	h.Write([]byte(data))
+
+	// 取IP的前8个字符（如果有的话）加上哈希值
+	ipPrefix := ip
+	if len(ip) > 8 {
+		ipPrefix = ip[:8]
+	}
+	return fmt.Sprintf("%s-%x", ipPrefix, h.Sum32())
+}
+
+// checkFirstLogin 检查是否是首次登录
+func (s *AuthService) checkFirstLogin(deviceFingerprint string) bool {
+	if s.db == nil {
+		return true // 没有数据库时，总是认为是首次登录
+	}
+
+	var count int64
+	err := s.db.Model(&models.Session{}).
+		Where("device_fingerprint = ?", deviceFingerprint).
+		Count(&count).Error
+
+	if err != nil {
+		return true // 出错时保守处理，认为是首次登录
+	}
+
+	return count == 0 // 没有找到相同设备的会话，说明是首次登录
 }

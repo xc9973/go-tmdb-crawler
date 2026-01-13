@@ -8,14 +8,16 @@ import (
 // Session represents an auth session stored in the database
 // Token is stored as raw JWT string for simple lookup and invalidation.
 type Session struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	SessionID  string    `gorm:"size:64;uniqueIndex:idx_session_id;not null" json:"session_id"`
-	Token      string    `gorm:"type:text;not null" json:"token"`
-	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
-	ExpiresAt  time.Time `gorm:"index:idx_expires_at;not null" json:"expires_at"`
-	LastActive time.Time `gorm:"autoUpdateTime" json:"last_active"`
-	UserAgent  string    `gorm:"type:text" json:"user_agent"`
-	IP         string    `gorm:"size:64;index:idx_ip" json:"ip"`
+	ID                uint      `gorm:"primaryKey" json:"id"`
+	SessionID         string    `gorm:"size:64;uniqueIndex:idx_session_id;not null" json:"session_id"`
+	Token             string    `gorm:"type:text;not null" json:"token"`
+	CreatedAt         time.Time `gorm:"autoCreateTime" json:"created_at"`
+	ExpiresAt         time.Time `gorm:"index:idx_expires_at;not null" json:"expires_at"`
+	LastActive        time.Time `gorm:"autoUpdateTime" json:"last_active"`
+	UserAgent         string    `gorm:"type:text" json:"user_agent"`
+	IP                string    `gorm:"size:64;index:idx_ip" json:"ip"`
+	IsFirstLogin      bool      `gorm:"index:idx_is_first_login;default:true" json:"is_first_login"`
+	DeviceFingerprint string    `gorm:"size:255;index:idx_device_fingerprint" json:"device_fingerprint"`
 }
 
 // TableName specifies the table name for Session model
