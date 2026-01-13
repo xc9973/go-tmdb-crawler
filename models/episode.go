@@ -10,9 +10,9 @@ import (
 // Episode represents a single episode of a TV show
 type Episode struct {
 	ID            uint       `gorm:"primaryKey" json:"id"`
-	ShowID        uint       `gorm:"not null;index:idx_show_id,priority:1" json:"show_id"`
-	SeasonNumber  int        `gorm:"not null;index:idx_show_id,priority:2;index:idx_season_number" json:"season_number"`
-	EpisodeNumber int        `gorm:"not null;index:idx_show_id,priority:3" json:"episode_number"`
+	ShowID        uint       `gorm:"not null;index:idx_show_id,priority:1;uniqueIndex:unique_episode,priority:1" json:"show_id"`
+	SeasonNumber  int        `gorm:"not null;index:idx_show_id,priority:2;index:idx_season_number;uniqueIndex:unique_episode,priority:2" json:"season_number"`
+	EpisodeNumber int        `gorm:"not null;index:idx_show_id,priority:3;uniqueIndex:unique_episode,priority:3" json:"episode_number"`
 	Name          string     `gorm:"size:255" json:"name"`
 	Overview      string     `gorm:"type:text" json:"overview"`
 	AirDate       *time.Time `gorm:"index:idx_air_date" json:"air_date"`
