@@ -115,11 +115,11 @@ class APIClient {
 
                 // 解析 JSON，增强健壮性
                 let data;
+                const text = await response.text();
                 try {
-                    data = await response.json();
+                    data = JSON.parse(text);
                 } catch (parseError) {
                     // 如果响应不是 JSON（例如服务器返回 HTML 错误页），使用文本消息
-                    const text = await response.text();
                     data = { message: text || '无法解析响应' };
                 }
 
