@@ -86,6 +86,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		&models.CrawlTask{},
 		&models.TelegraphPost{},
 		&models.Session{},
+		&models.UploadedEpisode{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
