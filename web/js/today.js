@@ -129,7 +129,21 @@ class TodayPage {
                 episodesHTML = '<div class="mt-2"><small class="text-muted">更新集数:</small><ul class="list-unstyled mb-0 small">';
                 show.episodes.slice(0, 5).forEach(ep => {
                     const episodeCode = `S${ep.season_number}E${ep.episode_number}`;
-                    episodesHTML += `<li><i class="bi bi-play-circle"></i> ${episodeCode} - ${this.escapeHtml(ep.name)}</li>`;
+                    const isUploaded = ep.uploaded || false;
+                    const checkBtnClass = isUploaded ? 'uploaded' : '';
+                    const btnTitle = isUploaded ? '已上传 - 点击取消' : '标记已上传';
+
+                    episodesHTML += `
+                        <li class="d-flex align-items-center gap-2">
+                            <button class="upload-check-btn ${checkBtnClass}"
+                                    data-episode-id="${ep.id}"
+                                    onclick="todayPage.toggleUploaded(${ep.id}, event)"
+                                    title="${btnTitle}">
+                            </button>
+                            <span class="flex-grow-1">
+                                <i class="bi bi-play-circle"></i> ${episodeCode} - ${this.escapeHtml(ep.name)}
+                            </span>
+                        </li>`;
                 });
                 if (show.episodes.length > 5) {
                     episodesHTML += `<li class="text-muted">...还有 ${show.episodes.length - 5} 集</li>`;
@@ -366,6 +380,52 @@ class TodayPage {
             }
         } catch (error) {
             this.showError('刷新失败: ' + error.message);
+        }
+    }
+
+    /**
+     * 切换剧集的上传状态
+     * @param {number} episodeId - 剧集ID
+     * @param {Event} event - 点击事件
+     */
+    async toggleUploaded(episodeId, event) {
+        event.stopPropagation(); // 防止触发父元素点击
+
+        const btn = event.target.closest('.upload-check-btn');
+        if (!btn) return;
+
+        const isCurrentlyUploaded = btn.classList.contains('uploaded');
+
+        // 乐观更新 UI
+        btn.classList.add('loading');
+        if (isCurrentlyUploaded) {
+            btn.classList.remove('uploaded');
+        } else {
+            btn.classList.add('uploaded');
+        }
+
+        try {
+            // 调用 API
+            if (isCurrentlyUploaded) {
+                await api.unmarkEpisodeUploaded(episodeId);
+                btn.title = '标记已上传';
+            } else {
+                await api.markEpisodeUploaded(episodeId);
+                btn.title = '已上传 - 点击取消';
+            }
+            this.showSuccess(isCurrentlyUploaded ? '已取消标记' : '已标记为上传');
+        } catch (error) {
+            // 失败回滚
+            if (isCurrentlyUploaded) {
+                btn.classList.add('uploaded');
+                btn.title = '已上传 - 点击取消';
+            } else {
+                btn.classList.remove('uploaded');
+                btn.title = '标记已上传';
+            }
+            this.showError('操作失败: ' + error.message);
+        } finally {
+            btn.classList.remove('loading');
         }
     }
 
