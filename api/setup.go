@@ -71,6 +71,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	crawlLogRepo := repositories.NewCrawlLogRepository(db)
 	crawlTaskRepo := repositories.NewCrawlTaskRepository(db)
 	telegraphPostRepo := repositories.NewTelegraphPostRepository(db)
+	uploadedEpisodeRepo := repositories.NewUploadedEpisodeRepository(db)
 
 	// Set timezone helper for episode repository
 	episodeRepo.SetTimezoneHelper(timezoneHelper)
@@ -122,6 +123,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Initialize backup service
 	backupService := backupservice.NewService(db, showRepo, episodeRepo, crawlLogRepo, telegraphPostRepo)
 	backupAPI := NewBackupAPI(backupService)
+	uploadedEpisodeAPI := NewUploadedEpisodeAPI(episodeRepo, uploadedEpisodeRepo)
 
 	// API routes
 	api := router.Group("/api/v1")
@@ -196,6 +198,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		admin.GET("/backup/export", backupAPI.ExportBackup)
 		admin.POST("/backup/import", backupAPI.ImportBackup)
 		admin.GET("/backup/status", backupAPI.GetBackupStatus)
+
+		// Episode upload tracking (write operations - requires admin auth)
+		admin.POST("/episodes/:id/uploaded", uploadedEpisodeAPI.MarkUploaded)
+		admin.DELETE("/episodes/:id/uploaded", uploadedEpisodeAPI.UnmarkUploaded)
 	}
 
 	// Start scheduler if enabled
