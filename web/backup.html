@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据备份 - TMDB剧集管理系统</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="css/custom.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-tv"></i> TMDB剧集管理系统
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">剧集列表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/today.html">今日更新</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logs.html">爬取日志</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/backup.html">数据备份</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item" id="authStatus">
+                        <button class="btn btn-outline-light btn-sm" id="loginLogoutBtn" onclick="handleAuthClick()">
+                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2><i class="bi bi-database-down"></i> 数据备份</h2>
+                <p class="text-muted">导出或导入系统数据备份</p>
+            </div>
+        </div>
+
+        <!-- Current Stats -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-bar-chart"></i> 当前数据统计</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center" id="currentStats">
+                            <div class="col-md-3">
+                                <div class="display-6" id="showsCount">-</div>
+                                <div class="text-muted">剧集</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="display-6" id="episodesCount">-</div>
+                                <div class="text-muted">集数</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="display-6" id="crawlLogsCount">-</div>
+                                <div class="text-muted">爬取日志</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="display-6" id="telegraphPostsCount">-</div>
+                                <div class="text-muted">Telegraph文章</div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3" id="lastBackupInfo"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-download"></i> 导出备份</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>导出当前所有数据为 JSON 格式备份文件。</p>
+                        <ul>
+                            <li>包含所有剧集、集数、爬取日志和 Telegraph 文章</li>
+                            <li>文件格式: JSON</li>
+                            <li>建议定期导出备份</li>
+                        </ul>
+                        <button class="btn btn-success" id="exportBtn">
+                            <i class="bi bi-download"></i> 导出备份
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="bi bi-upload"></i> 导入备份</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="importForm">
+                            <div class="mb-3">
+                                <label for="backupFile" class="form-label">选择备份文件</label>
+                                <input type="file" class="form-control" id="backupFile" accept=".json" required>
+                                <div class="form-text">仅支持 JSON 格式备份文件,最大 50MB</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="importMode" class="form-label">导入模式</label>
+                                <select class="form-select" id="importMode">
+                                    <option value="replace">替换模式 - 清空现有数据后导入</option>
+                                    <option value="merge">合并模式 - 保留现有数据,ID冲突时跳过</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-warning" id="importBtn">
+                                <i class="bi bi-upload"></i> 导入备份
+                            </button>
+                        </form>
+                        <div class="alert alert-danger mt-3 d-none" id="importWarning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>警告:</strong> 导入操作不可逆,请确保备份文件正确!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Result Modal -->
+        <div class="modal fade" id="importResultModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header" id="importResultHeader">
+                        <h5 class="modal-title">导入结果</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="importResultBody"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Auth Check - 强制认证 -->
+    <script src="js/auth-check.js"></script>
+    <!-- Custom JS -->
+    <script src="js/api.js"></script>
+    <script src="js/feedback.js"></script>
+    <script src="js/auth-ui.js"></script>
+    <script src="js/backup.js"></script>
+</body>
+</html>

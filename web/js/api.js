@@ -367,6 +367,54 @@ class APIClient {
         });
         return response.text();
     }
+
+    // ========== Backup API ==========
+
+    /**
+     * 导出备份数据
+     */
+    async exportBackup() {
+        const response = await fetch(`${this.baseURL}/backup/export`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const error = new Error('导出失败');
+            error.status = response.status;
+            throw error;
+        }
+
+        // Get filename from Content-Disposition header
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'tmdb-backup.json';
+        if (contentDisposition) {
+            const match = contentDisposition.match(/filename="(.+)"/);
+            if (match) {
+                filename = match[1];
+            }
+        }
+
+        // Download file
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        return { success: true, filename };
+    }
+
+    /**
+     * 获取备份状态
+     */
+    async getBackupStatus() {
+        return this.get('/backup/status');
+    }
 }
 
 // 创建全局API客户端实例

@@ -14,6 +14,7 @@ type TelegraphPostRepository interface {
 	GetByPath(path string) (*models.TelegraphPost, error)
 	GetByContentHash(hash string) (*models.TelegraphPost, error)
 	GetRecent(limit int) ([]*models.TelegraphPost, error)
+	ListAll() ([]*models.TelegraphPost, error)
 	GetToday() (*models.TelegraphPost, error)
 	GetByDateRange(startDate, endDate time.Time) ([]*models.TelegraphPost, error)
 	Update(post *models.TelegraphPost) error
@@ -75,6 +76,13 @@ func (r *telegraphPostRepository) GetRecent(limit int) ([]*models.TelegraphPost,
 	err := r.db.Order("created_at DESC").
 		Limit(limit).
 		Find(&posts).Error
+	return posts, err
+}
+
+// ListAll retrieves all telegraph posts
+func (r *telegraphPostRepository) ListAll() ([]*models.TelegraphPost, error) {
+	var posts []*models.TelegraphPost
+	err := r.db.Order("created_at DESC").Find(&posts).Error
 	return posts, err
 }
 

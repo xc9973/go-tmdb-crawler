@@ -13,6 +13,7 @@ type CrawlLogRepository interface {
 	GetByID(id uint) (*models.CrawlLog, error)
 	GetByShowID(showID uint, limit int) ([]*models.CrawlLog, error)
 	GetRecent(limit int) ([]*models.CrawlLog, error)
+	ListAll() ([]*models.CrawlLog, error)
 	GetByStatus(status string, page, pageSize int) ([]*models.CrawlLog, int64, error)
 	GetByDateRange(startDate, endDate time.Time) ([]*models.CrawlLog, error)
 	Delete(id uint) error
@@ -99,6 +100,13 @@ func (r *crawlLogRepository) GetByDateRange(startDate, endDate time.Time) ([]*mo
 		Preload("Show").
 		Order("created_at DESC").
 		Find(&logs).Error
+	return logs, err
+}
+
+// ListAll retrieves all crawl logs
+func (r *crawlLogRepository) ListAll() ([]*models.CrawlLog, error) {
+	var logs []*models.CrawlLog
+	err := r.db.Order("created_at DESC").Find(&logs).Error
 	return logs, err
 }
 

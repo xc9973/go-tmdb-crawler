@@ -9,6 +9,7 @@ import (
 	"github.com/xc9973/go-tmdb-crawler/middleware"
 	"github.com/xc9973/go-tmdb-crawler/models"
 	"github.com/xc9973/go-tmdb-crawler/repositories"
+	backupservice "github.com/xc9973/go-tmdb-crawler/services/backup"
 	"github.com/xc9973/go-tmdb-crawler/services"
 	"github.com/xc9973/go-tmdb-crawler/utils"
 	"gorm.io/driver/sqlite"
@@ -40,6 +41,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	router.StaticFile("/today.html", cfg.Paths.Web+"/today.html")
 	router.StaticFile("/logs.html", cfg.Paths.Web+"/logs.html")
 	router.StaticFile("/show_detail.html", cfg.Paths.Web+"/show_detail.html")
+	router.StaticFile("/backup.html", cfg.Paths.Web+"/backup.html")
 
 	// Initialize timezone helper
 	location, err := time.LoadLocation(cfg.Timezone.Default)
@@ -102,6 +104,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	markdownService.SetTimezoneHelper(timezoneHelper)
 	publishAPI := NewPublishAPI(publisher, markdownService)
 	schedulerAPI := NewSchedulerAPI(scheduler)
+
+	// Initialize backup service
+	backupService := backupservice.NewService(db, showRepo, episodeRepo, crawlLogRepo, telegraphPostRepo)
+	backupAPI := NewBackupAPI(backupService)
 
 	// API routes
 	api := router.Group("/api/v1")
@@ -170,6 +176,11 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		admin.POST("/scheduler/publish/:id", schedulerAPI.RunManualPublish)
 		admin.GET("/scheduler/timeouts", schedulerAPI.GetTimeouts)
 		admin.PUT("/scheduler/timeouts", schedulerAPI.SetTimeouts)
+
+		// Backup
+		admin.GET("/backup/export", backupAPI.ExportBackup)
+		admin.POST("/backup/import", backupAPI.ImportBackup)
+		admin.GET("/backup/status", backupAPI.GetBackupStatus)
 	}
 
 	// Start scheduler if enabled
