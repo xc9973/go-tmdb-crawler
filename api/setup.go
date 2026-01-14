@@ -2,8 +2,10 @@ package api
 
 import (
 	"log"
+	"strings"
 	"time"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/xc9973/go-tmdb-crawler/config"
 	"github.com/xc9973/go-tmdb-crawler/middleware"
@@ -31,6 +33,12 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 	// CORS middleware
 	router.Use(corsMiddleware(cfg))
+
+	// Gzip compression
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	// Static file cache middleware
+	router.Use(staticCacheMiddleware())
 
 	// Serve static files
 	router.Static("/css", cfg.Paths.Web+"/css")
@@ -195,6 +203,23 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	}
 
 	return router
+}
+
+// staticCacheMiddleware adds cache headers for static files
+func staticCacheMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+		// Remove query string for suffix check
+		if idx := strings.Index(path, "?"); idx != -1 {
+			path = path[:idx]
+		}
+		// Add cache headers for CSS and JS files
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js") {
+			c.Header("Cache-Control", "public, max-age=86400") // 1 day
+			c.Header("Vary", "Accept-Encoding")
+		}
+		c.Next()
+	}
 }
 
 // corsMiddleware adds CORS headers
