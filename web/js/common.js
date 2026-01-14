@@ -1,7 +1,7 @@
 /**
  * Common.js - 合并公共JS文件
  * 包含: auth-check.js, api.js, feedback.js, auth-ui.js
- * 版本: 2.1
+ * 版本: 2.2
  */
 
 // ==================== Feedback Module ====================
