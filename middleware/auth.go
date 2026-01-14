@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -416,6 +417,52 @@ func OptionalAdminAuth() gin.HandlerFunc {
 		}
 
 		c.Set("authenticated", valid)
+		c.Next()
+	}
+}
+
+// WebAuthMiddleware Web页面认证中间件
+// 未认证时重定向到登录页,而非返回JSON 401
+// 适用于HTML页面访问
+func WebAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if adminAuth == nil {
+			c.Next()
+			return
+		}
+
+		secretKey := adminAuth.config.SecretKey
+		envSecret := adminAuth.envSecret
+
+		// 检查是否配置了密钥
+		if secretKey == "" && envSecret == "" {
+			c.Next()
+			return
+		}
+
+		// 从cookie中获取JWT token
+		token, err := c.Cookie("session_token")
+		if err != nil || token == "" {
+			// 未登录,重定向到登录页
+			currentURL := c.Request.URL.String()
+			loginURL := "/login.html?redirect=" + url.QueryEscape(currentURL)
+			c.Redirect(http.StatusFound, loginURL)
+			c.Abort()
+			return
+		}
+
+		// 验证JWT token (如果配置了authService)
+		if adminAuth.authService != nil {
+			if _, err := adminAuth.authService.ValidateToken(token); err != nil {
+				// token无效,重定向到登录页
+				currentURL := c.Request.URL.String()
+				loginURL := "/login.html?redirect=" + url.QueryEscape(currentURL)
+				c.Redirect(http.StatusFound, loginURL)
+				c.Abort()
+				return
+			}
+		}
+
 		c.Next()
 	}
 }

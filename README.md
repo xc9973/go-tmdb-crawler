@@ -475,6 +475,14 @@ sqlite3 tmdb.db "SELECT COUNT(*) FROM shows;"
 ---
 
 <div align="center">
+# 进入数据库 
+  sqlite3 ./tmdb_test.db              
+  # 查看所有表                        
+  tables                                                                                          
+  # 查询剧集数据                  
+  SELECT*FROMshows;                                                                                          
+  # 退出                           
+  .quit
 
 **如果这个项目对您有帮助,请给个⭐️**
 

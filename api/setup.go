@@ -40,16 +40,22 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Static file cache middleware
 	router.Use(staticCacheMiddleware())
 
-	// Serve static files
+	// 公开静态文件 (CSS/JS/登录页/欢迎页)
 	router.Static("/css", cfg.Paths.Web+"/css")
 	router.Static("/js", cfg.Paths.Web+"/js")
-	router.StaticFile("/welcome.html", cfg.Paths.Web+"/welcome.html")
 	router.StaticFile("/login.html", cfg.Paths.Web+"/login.html")
-	router.StaticFile("/", cfg.Paths.Web+"/index.html")
-	router.StaticFile("/today.html", cfg.Paths.Web+"/today.html")
-	router.StaticFile("/logs.html", cfg.Paths.Web+"/logs.html")
-	router.StaticFile("/show_detail.html", cfg.Paths.Web+"/show_detail.html")
-	router.StaticFile("/backup.html", cfg.Paths.Web+"/backup.html")
+	router.StaticFile("/welcome.html", cfg.Paths.Web+"/welcome.html")
+
+	// 需要认证的Web页面
+	webPages := router.Group("")
+	webPages.Use(middleware.WebAuthMiddleware())
+	{
+		webPages.StaticFile("/", cfg.Paths.Web+"/index.html")
+		webPages.StaticFile("/today.html", cfg.Paths.Web+"/today.html")
+		webPages.StaticFile("/logs.html", cfg.Paths.Web+"/logs.html")
+		webPages.StaticFile("/show_detail.html", cfg.Paths.Web+"/show_detail.html")
+		webPages.StaticFile("/backup.html", cfg.Paths.Web+"/backup.html")
+	}
 
 	// Initialize timezone helper
 	location, err := time.LoadLocation(cfg.Timezone.Default)

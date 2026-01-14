@@ -879,13 +879,10 @@ window.initAuthUI = initAuthUI;
         authCheckEndpoint: '/api/v1/auth/session',
         // 登录页面路径
         loginPagePath: '/login.html',
-        // 不需要认证的页面路径
+        // 不需要认证的页面路径 (仅登录页和欢迎页公开)
         publicPages: [
             '/login.html',
-            '/welcome.html',
-            '/index.html',
-            '/show_detail.html',
-            '/today.html'
+            '/welcome.html'
         ],
         // 是否在控制台输出调试信息
         debug: false
