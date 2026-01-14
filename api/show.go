@@ -110,6 +110,12 @@ func (api *ShowAPI) CreateShow(c *gin.Context) {
 		return
 	}
 
+	// Check if show already exists
+	if _, err := api.showRepo.GetByTmdbID(req.TmdbID); err == nil {
+		c.JSON(http.StatusConflict, dto.Error(409, "Show already exists"))
+		return
+	}
+
 	// Crawl the show
 	if err := api.crawler.CrawlShow(req.TmdbID); err != nil {
 		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
