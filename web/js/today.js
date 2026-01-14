@@ -120,73 +120,45 @@ class TodayPage {
         empty.style.display = 'none';
 
         this.shows.forEach(show => {
-            const col = document.createElement('div');
-            col.className = 'col-md-6 col-lg-4 mb-3';
-            
+            const row = document.createElement('div');
+            row.className = 'episode-list-row mb-3';
+
             // 构建集数列表HTML
             let episodesHTML = '';
             if (show.episodes && show.episodes.length > 0) {
-                episodesHTML = '<div class="mt-2"><small class="text-muted">更新集数:</small><ul class="list-unstyled mb-0 small">';
-                show.episodes.slice(0, 5).forEach(ep => {
+                episodesHTML = '<div class="episodes-list">';
+                show.episodes.forEach(ep => {
                     const episodeCode = `S${ep.season_number}E${ep.episode_number}`;
                     const isUploaded = ep.uploaded || false;
                     const checkBtnClass = isUploaded ? 'uploaded' : '';
                     const btnTitle = isUploaded ? '已上传 - 点击取消' : '标记已上传';
 
                     episodesHTML += `
-                        <li class="d-flex align-items-center gap-2">
+                        <div class="episode-row">
+                            <span class="episode-code">${episodeCode}</span>
+                            <span class="episode-name">${this.escapeHtml(ep.name)}</span>
                             <button class="upload-check-btn ${checkBtnClass}"
                                     data-episode-id="${ep.id}"
                                     onclick="todayPage.toggleUploaded(${ep.id}, event)"
                                     title="${btnTitle}">
                             </button>
-                            <span class="flex-grow-1">
-                                <i class="bi bi-play-circle"></i> ${episodeCode} - ${this.escapeHtml(ep.name)}
-                            </span>
-                        </li>`;
+                        </div>`;
                 });
-                if (show.episodes.length > 5) {
-                    episodesHTML += `<li class="text-muted">...还有 ${show.episodes.length - 5} 集</li>`;
-                }
-                episodesHTML += '</ul></div>';
+                episodesHTML += '</div>';
             }
-            
-            col.innerHTML = `
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-start">
-                            <img src="${this.getPosterUrl(show.poster_path)}"
-                                 alt="${show.name}"
-                                 class="rounded me-3"
-                                 style="width: 80px; height: 120px; object-fit: cover;">
-                            <div class="flex-grow-1">
-                                <h5 class="card-title">${this.escapeHtml(show.name)}</h5>
-                                <div class="mb-2">
-                                    <span class="badge bg-primary">${show.episode_count} 集更新</span>
-                                    ${show.vote_average ? `<span class="badge bg-warning text-dark">
-                                        ${show.vote_average.toFixed(1)} <i class="bi bi-star-fill"></i>
-                                    </span>` : ''}
-                                </div>
-                                <p class="card-text small text-muted">
-                                    <i class="bi bi-calendar"></i> ${this.formatDate(show.first_air_date)}
-                                </p>
-                                ${episodesHTML}
-                            </div>
+
+            row.innerHTML = `
+                <div class="card">
+                    <div class="card-body py-2">
+                        <div class="show-header">
+                            <h5 class="show-name">${this.escapeHtml(show.name)}</h5>
+                            <span class="show-date text-muted">${this.formatDate(show.first_air_date)}</span>
                         </div>
-                    </div>
-                    <div class="card-footer bg-transparent">
-                        <div class="btn-group w-100">
-                            <a href="/show_detail.html?id=${show.id}" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-eye"></i> 详情
-                            </a>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="todayPage.refreshShow(${show.id})">
-                                <i class="bi bi-arrow-clockwise"></i> 刷新
-                            </button>
-                        </div>
+                        ${episodesHTML}
                     </div>
                 </div>
             `;
-            container.appendChild(col);
+            container.appendChild(row);
         });
     }
 
