@@ -146,33 +146,14 @@ func (api *CrawlerAPI) RefreshAll(c *gin.Context) {
 
 // GetTodayUpdates handles GET /api/v1/crawler/today-updates
 func (api *CrawlerAPI) GetTodayUpdates(c *gin.Context) {
-	// Get episodes airing today
-	episodes, err := api.episodeRepo.GetTodayUpdates()
+	// Get episodes with upload status
+	episodes, err := api.episodeRepo.GetTodayUpdatesWithUploadStatus()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
 		return
 	}
 
-	// Build response with show information
-	type EpisodeWithShow struct {
-		*models.Episode
-		ShowName   string `json:"show_name"`
-		PosterPath string `json:"poster_path"`
-		ShowStatus string `json:"show_status"`
-	}
-
-	result := make([]EpisodeWithShow, 0)
-	for _, episode := range episodes {
-		item := EpisodeWithShow{
-			Episode:    episode,
-			ShowName:   episode.Show.Name,
-			PosterPath: episode.Show.PosterPath,
-			ShowStatus: episode.Show.Status,
-		}
-		result = append(result, item)
-	}
-
-	c.JSON(http.StatusOK, dto.Success(result))
+	c.JSON(http.StatusOK, dto.Success(episodes))
 }
 
 // GetCrawlLogs handles GET /api/v1/crawler/logs

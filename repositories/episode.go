@@ -18,6 +18,7 @@ type EpisodeRepository interface {
 	GetBySeason(showID uint, seasonNumber int) ([]*models.Episode, error)
 	GetByDateRange(startDate, endDate time.Time) ([]*models.Episode, error)
 	GetTodayUpdates() ([]*models.Episode, error)
+	GetTodayUpdatesWithUploadStatus() ([]map[string]interface{}, error)
 	Update(episode *models.Episode) error
 	Delete(id uint) error
 	DeleteByShowID(showID uint) error
@@ -125,6 +126,74 @@ func (r *episodeRepository) GetTodayUpdates() ([]*models.Episode, error) {
 		Order("air_date ASC").
 		Find(&episodes).Error
 	return episodes, err
+}
+
+// GetTodayUpdatesWithUploadStatus retrieves episodes airing today with upload status
+// 返回结构与前端 today.js 期望的格式匹配
+func (r *episodeRepository) GetTodayUpdatesWithUploadStatus() ([]map[string]interface{}, error) {
+	start, end := r.timezoneHelper.TodayRange()
+
+	type Result struct {
+		ID            uint
+		SeasonNumber  int
+		EpisodeNumber int
+		Name          string
+		AirDate       *time.Time
+		StillPath     string
+		VoteAverage   float32
+		ShowID        uint
+		ShowName      string
+		PosterPath    string
+		ShowStatus    string
+		Uploaded      bool
+	}
+
+	var results []Result
+	err := r.db.Raw(`
+        SELECT
+            e.id,
+            e.season_number,
+            e.episode_number,
+            e.name,
+            e.air_date,
+            e.still_path,
+            e.vote_average,
+            e.show_id,
+            s.name as show_name,
+            s.poster_path,
+            s.status as show_status,
+            COALESCE(ue.uploaded, 0) as uploaded
+        FROM episodes e
+        INNER JOIN shows s ON e.show_id = s.id
+        LEFT JOIN uploaded_episodes ue ON e.id = ue.episode_id
+        WHERE e.air_date >= ? AND e.air_date < ?
+        ORDER BY e.air_date ASC
+    `, start, end).Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为 map 格式以匹配前端期望
+	episodes := make([]map[string]interface{}, len(results))
+	for i, r := range results {
+		episodes[i] = map[string]interface{}{
+			"id":             r.ID,
+			"season_number":  r.SeasonNumber,
+			"episode_number": r.EpisodeNumber,
+			"name":           r.Name,
+			"air_date":       r.AirDate,
+			"still_path":     r.StillPath,
+			"vote_average":   r.VoteAverage,
+			"show_id":        r.ShowID,
+			"show_name":      r.ShowName,
+			"poster_path":    r.PosterPath,
+			"show_status":    r.ShowStatus,
+			"uploaded":       r.Uploaded,
+		}
+	}
+
+	return episodes, nil
 }
 
 // Update updates an episode
