@@ -156,14 +156,18 @@ func (api *CrawlerAPI) GetTodayUpdates(c *gin.Context) {
 	// Build response with show information
 	type EpisodeWithShow struct {
 		*models.Episode
-		ShowName string `json:"show_name"`
+		ShowName   string `json:"show_name"`
+		PosterPath string `json:"poster_path"`
+		ShowStatus string `json:"show_status"`
 	}
 
 	result := make([]EpisodeWithShow, 0)
 	for _, episode := range episodes {
 		item := EpisodeWithShow{
-			Episode:  episode,
-			ShowName: episode.Show.Name,
+			Episode:    episode,
+			ShowName:   episode.Show.Name,
+			PosterPath: episode.Show.PosterPath,
+			ShowStatus: episode.Show.Status,
 		}
 		result = append(result, item)
 	}
@@ -299,14 +303,18 @@ func (api *CrawlerAPI) GetUpdatesByDateRange(c *gin.Context) {
 	// Build response with show information
 	type EpisodeWithShow struct {
 		*models.Episode
-		ShowName string `json:"show_name"`
+		ShowName   string `json:"show_name"`
+		PosterPath string `json:"poster_path"`
+		ShowStatus string `json:"show_status"`
 	}
 
 	result := make([]EpisodeWithShow, 0)
 	for _, episode := range episodes {
 		item := EpisodeWithShow{
-			Episode:  episode,
-			ShowName: episode.Show.Name,
+			Episode:    episode,
+			ShowName:   episode.Show.Name,
+			PosterPath: episode.Show.PosterPath,
+			ShowStatus: episode.Show.Status,
 		}
 		result = append(result, item)
 	}

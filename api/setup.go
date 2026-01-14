@@ -129,6 +129,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 		// Calendar (只读)
 		api.GET("/calendar/today", crawlerAPI.GetTodayUpdates)
+		api.GET("/crawler/updates", crawlerAPI.GetUpdatesByDateRange)
 
 		// Crawler (只读状态)
 		api.GET("/crawler/status", crawlerAPI.GetHealthStatus)
