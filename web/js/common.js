@@ -543,6 +543,24 @@ class APIClient {
         });
     }
 
+    // ========== Episode Upload Tracking ==========
+
+    /**
+     * 标记剧集已上传
+     * POST /api/v1/episodes/:id/uploaded
+     */
+    async markEpisodeUploaded(episodeId) {
+        return this.post(`/episodes/${episodeId}/uploaded`, {});
+    }
+
+    /**
+     * 取消标记剧集已上传
+     * DELETE /api/v1/episodes/:id/uploaded
+     */
+    async unmarkEpisodeUploaded(episodeId) {
+        return this.delete(`/episodes/${episodeId}/uploaded`);
+    }
+
     // ========== 发布 API ==========
 
     /**
