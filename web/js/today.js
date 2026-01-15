@@ -368,6 +368,16 @@ class TodayPage {
 
         const isCurrentlyUploaded = btn.classList.contains('uploaded');
 
+        // 检查认证状态
+        if (!api.isAuthenticated) {
+            this.showError('请先登录后再操作');
+            // 触发登录流程
+            if (typeof showLoginModal === 'function') {
+                showLoginModal('标记上传状态需要管理员权限');
+            }
+            return;
+        }
+
         // 乐观更新 UI
         btn.classList.add('loading');
         if (isCurrentlyUploaded) {
@@ -385,9 +395,12 @@ class TodayPage {
                 await api.markEpisodeUploaded(episodeId);
                 btn.title = '已上传 - 点击取消';
             }
+
+            // 成功后更新本地数据
+            this.updateLocalEpisodeStatus(episodeId, !isCurrentlyUploaded);
             this.showSuccess(isCurrentlyUploaded ? '已取消标记' : '已标记为上传');
         } catch (error) {
-            // 失败回滚
+            // 失败回滚 UI
             if (isCurrentlyUploaded) {
                 btn.classList.add('uploaded');
                 btn.title = '已上传 - 点击取消';
@@ -395,30 +408,80 @@ class TodayPage {
                 btn.classList.remove('uploaded');
                 btn.title = '标记已上传';
             }
-            this.showError('操作失败: ' + error.message);
+
+            // 检查是否是认证错误
+            if (error.message && error.message.includes('Unauthorized')) {
+                this.showError('登录已过期，请重新登录');
+                if (typeof showLoginModal === 'function') {
+                    showLoginModal('登录已过期，请重新登录以继续操作');
+                }
+            } else {
+                this.showError('操作失败: ' + error.message);
+            }
         } finally {
             btn.classList.remove('loading');
         }
     }
 
+    /**
+     * 更新本地剧集的上传状态
+     * @param {number} episodeId - 剧集ID
+     * @param {boolean} uploaded - 上传状态
+     */
+    updateLocalEpisodeStatus(episodeId, uploaded) {
+        // 更新 this.shows 中对应剧集的 uploaded 状态
+        for (const show of this.shows) {
+            if (show.episodes) {
+                const episode = show.episodes.find(ep => ep.id === episodeId);
+                if (episode) {
+                    episode.uploaded = uploaded;
+                    break;
+                }
+            }
+        }
+    }
+
     async publishToTelegraph() {
+        // 检查认证状态
+        if (!api.isAuthenticated) {
+            this.showError('请先登录后再操作');
+            if (typeof showLoginModal === 'function') {
+                showLoginModal('发布到 Telegraph 需要管理员权限');
+            }
+            return;
+        }
+
         if (!confirm('确定要发布今日更新到Telegraph吗?')) return;
 
         try {
             this.showLoading(true);
-            const response = await api.publishToday();
+            console.log('[publishToTelegraph] 开始发布...');
 
-            if (response.code === 0 && response.data.success) {
+            const response = await api.publishToday();
+            console.log('[publishToTelegraph] 响应:', response);
+
+            if (response.code === 0 && response.data && response.data.success) {
                 this.showSuccess('发布成功!');
-                
+
                 if (response.data.url) {
                     this.showPublishModal(response.data.url);
                 }
             } else {
-                this.showError('发布失败: ' + (response.message || '未知错误'));
+                const errorMsg = response.message || response.data?.message || '未知错误';
+                this.showError('发布失败: ' + errorMsg);
             }
         } catch (error) {
-            this.showError('发布失败: ' + error.message);
+            console.error('[publishToTelegraph] 错误:', error);
+
+            // 检查是否是认证错误
+            if (error.message && error.message.includes('Unauthorized')) {
+                this.showError('登录已过期，请重新登录');
+                if (typeof showLoginModal === 'function') {
+                    showLoginModal('登录已过期，请重新登录以继续操作');
+                }
+            } else {
+                this.showError('发布失败: ' + error.message);
+            }
         } finally {
             this.showLoading(false);
         }
@@ -553,6 +616,10 @@ class TodayPage {
 
 // 初始化页面
 let todayPage;
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 先初始化认证状态，确保 api.isAuthenticated 正确设置
+    if (typeof initAuthUI === 'function') {
+        await initAuthUI();
+    }
     todayPage = new TodayPage();
 });
