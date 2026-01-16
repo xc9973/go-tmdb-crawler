@@ -52,6 +52,21 @@ class TodayPage {
             this.exportMarkdown();
         });
 
+        // 移动端按钮事件（与桌面端共享处理函数）
+        const publishBtnMobile = document.getElementById('publishTelegraphBtnMobile');
+        const exportBtnMobile = document.getElementById('exportMarkdownBtnMobile');
+
+        if (publishBtnMobile) {
+            publishBtnMobile.addEventListener('click', () => {
+                this.publishToTelegraph();
+            });
+        }
+        if (exportBtnMobile) {
+            exportBtnMobile.addEventListener('click', () => {
+                this.exportMarkdown();
+            });
+        }
+
         // 初始化日期选择器为今天
         document.getElementById('dateInput').value = this.formatDateForInput(new Date());
     }

@@ -11,6 +11,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="css/custom.css?v=2.2" rel="stylesheet">
+    <!-- Responsive CSS -->
+    <link href="css/responsive.css?v=1.0" rel="stylesheet">
 
     <!-- Resource Preload -->
     <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
@@ -58,14 +60,35 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center">
                     <h2><i class="bi bi-calendar-day"></i> 今日更新</h2>
-                    <div>
+                    <div class="page-header-actions d-flex gap-2">
                         <button class="btn btn-outline-secondary" id="refreshBtn">
                             <i class="bi bi-arrow-clockwise"></i> 刷新
                         </button>
-                        <button class="btn btn-success" id="publishTelegraphBtn">
+
+                        <!-- 移动端下拉菜单 -->
+                        <div class="dropdown d-md-none">
+                            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots"></i> 更多
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <button class="dropdown-item" id="publishTelegraphBtnMobile">
+                                        <i class="bi bi-send"></i> 发布到Telegraph
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item" id="exportMarkdownBtnMobile">
+                                        <i class="bi bi-file-code"></i> 导出Markdown
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- 桌面端按钮 -->
+                        <button class="btn btn-success d-none d-md-block" id="publishTelegraphBtn">
                             <i class="bi bi-send"></i> 发布到Telegraph
                         </button>
-                        <button class="btn btn-primary" id="exportMarkdownBtn">
+                        <button class="btn btn-primary d-none d-md-block" id="exportMarkdownBtn">
                             <i class="bi bi-file-code"></i> 导出Markdown
                         </button>
                     </div>
@@ -74,23 +97,23 @@
         </div>
 
         <!-- Date Selector -->
-        <div class="row mb-3">
-            <div class="col-md-4">
+        <div class="row mb-3 date-selector-section">
+            <div class="col-md-4 col-12">
                 <label for="dateInput" class="form-label">选择日期</label>
-                <input type="date" class="form-control" id="dateInput">
+                <input type="date" class="form-control form-control-lg" id="dateInput">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4 col-12">
                 <label class="form-label">快捷选择</label>
-                <div class="btn-group w-100">
+                <div class="btn-group w-100 quick-select-buttons" role="group">
                     <button class="btn btn-outline-primary" id="todayBtn">今天</button>
                     <button class="btn btn-outline-primary" id="yesterdayBtn">昨天</button>
                     <button class="btn btn-outline-primary" id="weekBtn">本周</button>
                     <button class="btn btn-outline-primary" id="monthBtn">本月</button>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4 col-12">
                 <label class="form-label">发布状态</label>
-                <div id="publishStatus">
+                <div id="publishStatus" class="d-flex align-items-center">
                     <span class="badge bg-secondary">未发布</span>
                 </div>
             </div>
@@ -99,19 +122,19 @@
         <!-- Statistics -->
         <div class="row mb-3">
             <div class="col-12">
-                <div class="card bg-light">
+                <div class="card bg-light stats-card">
                     <div class="card-body py-2">
                         <div class="row text-center">
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <strong>总更新:</strong> <span id="totalCount">0</span>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <strong>新剧集:</strong> <span id="newCount" class="text-success">0</span>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <strong>续订:</strong> <span id="returningCount" class="text-primary">0</span>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <strong>完结:</strong> <span id="endedCount" class="text-secondary">0</span>
                             </div>
                         </div>
@@ -151,6 +174,6 @@
     <!-- Common JS (合并: auth-check + api + feedback + auth-ui) -->
     <script src="js/common.js?v=2.5"></script>
     <!-- Page-specific JS -->
-    <script src="js/today.js?v=2.5"></script>
+    <script src="js/today.js?v=2.6"></script>
 </body>
 </html>
