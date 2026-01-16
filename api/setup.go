@@ -78,6 +78,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 	// Auto migrate database tables
 	// Note: Episode table structure is managed by SQL migrations (see migrations/001_init_schema.sql)
+	// Note: UploadedEpisode table structure is managed by SQL migrations (see migrations/005_add_uploaded_episodes.sql)
 	// We only AutoMigrate tables that don't have complex constraints
 	if err := db.AutoMigrate(
 		&models.Show{},
@@ -86,7 +87,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		&models.CrawlTask{},
 		&models.TelegraphPost{},
 		&models.Session{},
-		&models.UploadedEpisode{},
+		// &models.UploadedEpisode{}, // Skip - managed by SQL migrations
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
