@@ -943,10 +943,16 @@ window.initAuthUI = initAuthUI;
                 if (window.api) {
                     window.api.isAuthenticated = true;
                 }
-                // 更新登录按钮UI
-                if (typeof updateAuthUI === 'function') {
-                    updateAuthUI();
-                }
+                // 更新登录按钮UI (延迟执行,确保DOM已准备好)
+                setTimeout(() => {
+                    try {
+                        if (typeof window.updateAuthUI === 'function') {
+                            window.updateAuthUI();
+                        }
+                    } catch (e) {
+                        // 静默失败,不影响页面渲染
+                    }
+                }, 100);
                 return true;
             } else {
                 log('认证检查失败,重定向到登录页');
