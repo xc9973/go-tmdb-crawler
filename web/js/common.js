@@ -943,6 +943,10 @@ window.initAuthUI = initAuthUI;
                 if (window.api) {
                     window.api.isAuthenticated = true;
                 }
+                // 更新登录按钮UI
+                if (typeof updateAuthUI === 'function') {
+                    updateAuthUI();
+                }
                 return true;
             } else {
                 log('认证检查失败,重定向到登录页');
