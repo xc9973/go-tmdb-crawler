@@ -393,37 +393,27 @@ class TodayPage {
             return;
         }
 
-        // 乐观更新 UI
+        // 显示加载状态（不改变按钮状态）
         btn.classList.add('loading');
-        if (isCurrentlyUploaded) {
-            btn.classList.remove('uploaded');
-        } else {
-            btn.classList.add('uploaded');
-        }
 
         try {
             // 调用 API
             if (isCurrentlyUploaded) {
                 await api.unmarkEpisodeUploaded(episodeId);
+                // API 成功后更新 UI
+                btn.classList.remove('uploaded');
                 btn.title = '标记已上传';
             } else {
                 await api.markEpisodeUploaded(episodeId);
+                // API 成功后更新 UI
+                btn.classList.add('uploaded');
                 btn.title = '已上传 - 点击取消';
             }
 
-            // 成功后更新本地数据
+            // 更新本地数据
             this.updateLocalEpisodeStatus(episodeId, !isCurrentlyUploaded);
             this.showSuccess(isCurrentlyUploaded ? '已取消标记' : '已标记为上传');
         } catch (error) {
-            // 失败回滚 UI
-            if (isCurrentlyUploaded) {
-                btn.classList.add('uploaded');
-                btn.title = '已上传 - 点击取消';
-            } else {
-                btn.classList.remove('uploaded');
-                btn.title = '标记已上传';
-            }
-
             // 检查是否是认证错误
             if (error.message && error.message.includes('Unauthorized')) {
                 this.showError('登录已过期，请重新登录');

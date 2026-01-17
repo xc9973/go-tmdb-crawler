@@ -212,8 +212,26 @@ body {
     color: #6c757d;
 }
 
+.upload-check-btn.loading::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spinner-border 0.75s linear infinite;
+    color: #198754;
+    margin: 0;
+}
+
+@keyframes spinner-border {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 .upload-check-btn.loading {
-    opacity: 0.6;
     pointer-events: none;
 }
 
