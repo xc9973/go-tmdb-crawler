@@ -69,6 +69,20 @@ class TodayPage {
 
         // 初始化日期选择器为今天
         document.getElementById('dateInput').value = this.formatDateForInput(new Date());
+
+        // 移动端导航：点击链接后关闭菜单
+        const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+        const navbarCollapse = document.getElementById('navbarNav');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.getComputedStyle(document.querySelector('.navbar-toggler')).display !== 'none') {
+                    const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+                    if (bsCollapse) {
+                        bsCollapse.hide();
+                    }
+                }
+            });
+        });
     }
 
     async loadTodayUpdates() {
