@@ -74,7 +74,7 @@ body {
 
 /* Pagination */
 .pagination .page-link {
-    color: #0d6efd;
+    color: #0EA5E9;
     text-decoration: none;
     background-color: #fff;
     border: 1px solid #dee2e6;
@@ -89,8 +89,8 @@ body {
 }
 
 .pagination .page-item.active .page-link {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
+    background-color: #0EA5E9;
+    border-color: #0EA5E9;
     color: #fff;
     z-index: 3;
 }
@@ -237,7 +237,7 @@ body {
 
 /* 今日更新列表式布局 */
 .episode-list-row .card {
-    border-left: 4px solid #0d6efd;
+    border-left: 4px solid #0EA5E9;
 }
 
 .episode-list-row .show-header {
