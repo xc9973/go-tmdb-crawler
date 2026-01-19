@@ -1,0 +1,137 @@
+<!--
+  Glassmorphism Navbar Component
+  Usage: Include this snippet in all pages
+  Note: Add glass-navbar class to existing <nav> element
+-->
+
+<!-- Glass Navbar Structure -->
+<nav class="navbar navbar-expand-lg glass-navbar">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <i class="bi bi-tv"></i> TMDB剧集管理系统
+        </a>
+
+        <!-- Mobile Menu Button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-label="Toggle navigation" aria-controls="navbarNav" aria-expanded="false">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Navbar Links -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link {{indexActive}}" href="/">
+                        <i class="bi bi-list-ul"></i> 剧集列表
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{todayActive}}" href="/today.html">
+                        <i class="bi bi-calendar-day"></i> 今日更新
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{logsActive}}" href="/logs.html">
+                        <i class="bi bi-journal-text"></i> 爬取日志
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{backupActive}}" href="/backup.html">
+                        <i class="bi bi-database-down"></i> 数据备份
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Right Side Actions -->
+            <ul class="navbar-nav align-items-center gap-2">
+                <!-- Theme Toggle -->
+                <li class="nav-item">
+                    <button class="theme-toggle" id="themeToggle"
+                            aria-label="Toggle dark mode"
+                            title="切换主题">
+                    </button>
+                </li>
+
+                <!-- Auth Status -->
+                <li class="nav-item" id="authStatus">
+                    <button class="btn glass-btn glass-btn-primary btn-sm" id="loginLogoutBtn"
+                            onclick="handleAuthClick()"
+                            aria-label="Login or logout">
+                        <i class="bi bi-box-arrow-in-right"></i> <span id="authButtonText">登录</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Theme Toggle Script -->
+<script>
+// Theme Management
+(function() {
+    'use strict';
+
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+
+    // Get saved theme or prefer dark mode
+    const savedTheme = localStorage.getItem('theme') ||
+                     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+    // Apply theme
+    if (savedTheme === 'dark') {
+        html.setAttribute('data-theme', 'dark');
+    }
+
+    // Toggle theme on click
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            // Dispatch event for other components
+            window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
+        });
+    }
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        if (!localStorage.getItem('theme')) {
+            const newTheme = e.matches ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+        }
+    });
+})();
+</script>
+
+<style>
+/* Theme toggle positioning adjustments */
+.navbar-nav .theme-toggle {
+    margin-right: 0.5rem;
+}
+
+/* Mobile menu close after link click */
+@media (max-width: 991px) {
+    .navbar-nav .nav-link {
+        padding: 0.75rem 1rem;
+    }
+
+    .glass-navbar .navbar-collapse {
+        background: var(--glass-bg-white);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border-radius: var(--glass-radius-md);
+        padding: 1rem;
+        margin-top: 1rem;
+        border: 1px solid var(--glass-border);
+    }
+}
+
+/* Smooth scroll for anchor links */
+html {
+    scroll-behavior: smooth;
+}
+</style>

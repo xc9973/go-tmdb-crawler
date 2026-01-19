@@ -1,0 +1,495 @@
+/**
+ * ========================================
+ * Performance Optimization CSS
+ * TMDB Crawler - Glassmorphism Upgrade
+ * ========================================
+ *
+ * Features:
+ * - GPU-accelerated animations
+ * - Content visibility optimization
+ * - Contain property for layout optimization
+ * - Will-change hints
+ * - Image lazy loading styles
+ * - Print styles
+ */
+
+/* ========================================
+   GPU-Accelerated Animations
+   ======================================== */
+
+/* Force GPU layer for animated elements */
+.glass-card,
+.glass-btn,
+.glass-navbar,
+.glass-stats {
+    /* Hint to browser for better animation performance */
+    will-change: transform, box-shadow;
+
+    /* Force GPU acceleration (fallback) */
+    transform: translateZ(0);
+
+    /* Backface visibility for 3D transforms */
+    backface-visibility: hidden;
+
+    /* Optimize for GPU compositing */
+    -webkit-backface-visibility: hidden;
+    -webkit-perspective: 1000px;
+}
+
+/* Remove will-change after animation completes */
+@media (prefers-reduced-motion: reduce) {
+    .glass-card,
+    .glass-btn,
+    .glass-navbar,
+    .glass-stats {
+        will-change: auto;
+        transform: none;
+    }
+}
+
+/* ========================================
+   Content Visibility (New API)
+   ======================================== */
+
+/* Skip rendering off-screen content */
+.shows-table-row,
+.episode-list-row,
+.log-entry {
+    /* Chrome 85+, Firefox upcoming */
+    content-visibility: auto;
+    contain-intrinsic-size: 0 60px;
+}
+
+/* Pagination and off-screen elements */
+.pagination,
+.glass-pagination {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 50px;
+}
+
+/* ========================================
+   CSS Contain Property
+   ======================================== */
+
+/* Isolate components for better performance */
+.glass-card {
+    /* Prevent layout thrashing */
+    contain: layout style paint;
+}
+
+.glass-navbar {
+    /* Fixed position navigation optimization */
+    contain: layout style;
+}
+
+/* ========================================
+   Image Lazy Loading Styles
+   ======================================== */
+
+/* Lazy image placeholder */
+[data-lazy],
+[data-src] {
+    /* Maintain layout before loading */
+    min-height: 100px;
+    background: linear-gradient(
+        90deg,
+        rgba(124, 58, 237, 0.05) 0%,
+        rgba(124, 58, 237, 0.1) 50%,
+        rgba(124, 58, 237, 0.05) 100%
+    );
+    background-size: 200% 100%;
+    animation: lazyShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes lazyShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Loading state */
+img.lazy-loading {
+    opacity: 0.5;
+    filter: blur(10px);
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+/* Loaded state */
+img.lazy-loaded {
+    opacity: 1;
+    filter: blur(0);
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Error state */
+img.lazy-error {
+    opacity: 0.3;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(239, 68, 68, 0.1) 10px,
+        rgba(239, 68, 68, 0.1) 20px
+    );
+}
+
+/* ========================================
+   Font Loading Optimization
+   ======================================== */
+
+/* Font display strategy */
+@font-face {
+    font-family: 'Plus Jakarta Sans';
+    font-display: swap; /* Show fallback immediately, swap when loaded */
+}
+
+/* Prevent layout shift during font loading */
+body {
+    /* Reserve space for text */
+    min-height: 100vh;
+}
+
+/* Font loading states */
+.font-loading {
+    visibility: hidden;
+}
+
+.font-loaded {
+    visibility: visible;
+}
+
+/* ========================================
+   Scroll Performance
+   ======================================== */
+
+/* Smooth scrolling with hardware acceleration */
+html {
+    /* Smooth scrolling is handled by JS for better control */
+    scroll-behavior: auto;
+}
+
+/* Optimized scrollbar for webkit browsers */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(124, 58, 237, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 58, 237, 0.5);
+}
+
+/* ========================================
+   Table Performance
+   ======================================== */
+
+/* Fixed table layout for faster rendering */
+.glass-table table {
+    table-layout: fixed;
+}
+
+/* Sticky header with GPU acceleration */
+.glass-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    transform: translateZ(0); /* GPU layer */
+}
+
+/* Optimized cell rendering */
+.glass-table td,
+.glass-table th {
+    /* Prevent text layout shifts */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ========================================
+   Modal Performance
+   ======================================== */
+
+/* Modal backdrop with GPU acceleration */
+.modal-backdrop {
+    transform: translateZ(0);
+    will-change: opacity;
+}
+
+/* Modal content optimization */
+.modal-content {
+    /* Prevent layout thrashing inside modal */
+    contain: layout style paint;
+}
+
+/* ========================================
+   Form Performance
+   ======================================== */
+
+/* Optimize input rendering */
+input,
+select,
+textarea {
+    /* Prevent unwanted composition */
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Focus ring optimization */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--glass-primary);
+    outline-offset: 2px;
+    /* GPU acceleration for focus ring */
+    will-change: outline-width;
+}
+
+/* ========================================
+   Animation Performance
+   ======================================== */
+
+/* Use transform for better performance */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) translateZ(0);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) translateZ(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px) translateZ(0);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) translateZ(0);
+    }
+}
+
+/* GPU-accelerated hover effects */
+.glass-btn:hover,
+.glass-card:hover {
+    /* Use transform instead of margin/padding */
+    transform: translateY(-2px) translateZ(0);
+}
+
+/* ========================================
+   Responsive Images
+   ======================================== */
+
+/* Responsive image containers */
+.img-responsive {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Aspect ratio preservation */
+.img-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.img-container::before {
+    content: '';
+    display: block;
+    padding-top: 56.25%; /* 16:9 aspect ratio */
+}
+
+.img-container img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ========================================
+   Print Optimization
+   ======================================== */
+
+@media print {
+    /* Disable animations for print */
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    /* Remove glass effect for print */
+    .glass-card,
+    .glass-navbar,
+    .glass-btn {
+        background: white !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border: 1px solid #000 !important;
+    }
+
+    /* Hide unnecessary elements */
+    .theme-toggle,
+    .no-print {
+        display: none !important;
+    }
+
+    /* Optimize images for print */
+    img {
+        max-width: 100% !important;
+        page-break-inside: avoid;
+    }
+
+    /* Prevent page breaks */
+    .glass-card,
+    .glass-stats {
+        page-break-inside: avoid;
+    }
+}
+
+/* ========================================
+   Reduced Motion Support
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    /* Disable all animations */
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    /* Remove lazy loading shimmer */
+    [data-lazy]::before,
+    [data-src]::before {
+        animation: none;
+    }
+
+    /* Instant transitions */
+    .glass-card,
+    .glass-btn,
+    .glass-navbar {
+        transition: none;
+    }
+}
+
+/* ========================================
+   High Contrast Mode
+   ======================================== */
+
+@media (prefers-contrast: high) {
+    .glass-card {
+        border-width: 2px;
+    }
+
+    .glass-btn {
+        border-width: 2px;
+    }
+
+    /* Ensure text is readable */
+    .glass-stats .stat-value {
+        font-weight: 800;
+    }
+}
+
+/* ========================================
+   Dark Mode Performance
+   ======================================== */
+
+/* Optimize dark mode transitions */
+[data-theme="dark"] {
+    /* Smooth theme transition */
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+[data-theme="dark"] * {
+    /* Don't transition children */
+    transition: none !important;
+}
+
+/* ========================================
+   Critical CSS Hints
+   ======================================== */
+
+/* Hint for above-the-fold content */
+.above-fold {
+    /* Hint to browser this is critical content */
+    contain: layout style;
+}
+
+/* Defer off-screen rendering */
+.below-fold {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 500px;
+}
+
+/* ========================================
+   Container Queries (Future-ready)
+   ======================================== */
+
+/* Container query support detection */
+@supports (container-type: inline-size) {
+    .glass-card {
+        container-type: inline-size;
+    }
+
+    /* Responsive cards based on container, not viewport */
+    @container (max-width: 300px) {
+        .glass-stats .stat-value {
+            font-size: 1.5rem;
+        }
+    }
+}
+
+/* ========================================
+   Performance Monitoring (Dev Only)
+   ======================================== */
+
+/* Show performance hints in development */
+.performance-hint {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #0f0;
+    padding: 10px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 99999;
+    pointer-events: none;
+}
+
+/* Hide performance hints in production */
+body:not(.dev-mode) .performance-hint {
+    display: none;
+}

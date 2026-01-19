@@ -14,11 +14,20 @@
         frame-ancestors 'none';
     ">
     <title>TMDB剧集管理系统</title>
-    
+
+    <!-- Google Fonts - Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Glassmorphism Design System -->
+    <link href="css/glassmorphism.css?v=1.0" rel="stylesheet">
+    <!-- Performance Optimization CSS -->
+    <link href="css/performance.css?v=1.0" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="css/custom.css" rel="stylesheet">
 
@@ -28,35 +37,53 @@
     <link rel="preload" href="js/shows.js?v=2.1" as="script">
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- Glassmorphism Navbar -->
+    <nav class="navbar navbar-expand-lg glass-navbar">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-tv"></i> TMDB剧集管理系统
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="/">剧集列表</a>
+                        <a class="nav-link active" href="/">
+                            <i class="bi bi-list-ul"></i> 剧集列表
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/today.html">今日更新</a>
+                        <a class="nav-link" href="/today.html">
+                            <i class="bi bi-calendar-day"></i> 今日更新
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/logs.html">爬取日志</a>
+                        <a class="nav-link" href="/logs.html">
+                            <i class="bi bi-journal-text"></i> 爬取日志
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/backup.html">数据备份</a>
+                        <a class="nav-link" href="/backup.html">
+                            <i class="bi bi-database-down"></i> 数据备份
+                        </a>
                     </li>
                 </ul>
-                <!-- 认证状态 -->
-                <ul class="navbar-nav">
+                <!-- 右侧操作区 -->
+                <ul class="navbar-nav align-items-center gap-2">
+                    <!-- 主题切换 -->
+                    <li class="nav-item">
+                        <button class="theme-toggle" id="themeToggle"
+                                aria-label="切换主题" title="切换主题">
+                        </button>
+                    </li>
+                    <!-- 认证状态 -->
                     <li class="nav-item" id="authStatus">
-                        <button class="btn btn-outline-light btn-sm" id="loginLogoutBtn" onclick="handleAuthClick()">
-                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                        <button class="btn glass-btn glass-btn-primary btn-sm" id="loginLogoutBtn"
+                                onclick="handleAuthClick()"
+                                aria-label="登录或退出">
+                            <i class="bi bi-box-arrow-in-right"></i> <span id="authButtonText">登录</span>
                         </button>
                     </li>
                 </ul>
@@ -66,33 +93,45 @@
 
     <!-- Main Content -->
     <div class="container-fluid mt-4">
-        <!-- Page Header -->
+        <!-- Page Header with Glass Card -->
         <div class="row mb-4">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h2><i class="bi bi-list-ul"></i> 剧集列表</h2>
-                    <div>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addShowModal">
-                            <i class="bi bi-plus-circle"></i> 添加剧集
-                        </button>
-                        <button class="btn btn-success" id="refreshAllBtn">
-                            <i class="bi bi-arrow-clockwise"></i> 刷新全部
-                        </button>
+                <div class="glass-card p-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div>
+                            <h2 class="mb-1">
+                                <i class="bi bi-list-ul text-primary"></i> 剧集列表
+                            </h2>
+                            <p class="text-muted mb-0">管理和浏览您的电视剧集收藏</p>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn glass-btn glass-btn-primary" data-bs-toggle="modal" data-bs-target="#addShowModal"
+                                    aria-label="添加新剧集">
+                                <i class="bi bi-plus-circle"></i> 添加剧集
+                            </button>
+                            <button class="btn glass-btn glass-btn-success" id="refreshAllBtn"
+                                    aria-label="刷新所有剧集信息">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新全部
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Search and Filter -->
-        <div class="row mb-3">
+        <!-- Search and Filter with Glass Cards -->
+        <div class="row mb-3 g-3">
             <div class="col-md-6">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control" id="searchInput" placeholder="搜索剧集名称...">
+                <div class="glass-card">
+                    <div class="input-group">
+                        <span class="input-group-text border-0 bg-transparent"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-0 bg-transparent" id="searchInput"
+                               placeholder="搜索剧集名称..." aria-label="搜索剧集">
+                    </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <select class="form-select" id="statusFilter">
+                <select class="glass-select w-100" id="statusFilter" aria-label="筛选状态">
                     <option value="">全部状态</option>
                     <option value="Returning Series">连载中</option>
                     <option value="Ended">已完结</option>
@@ -100,7 +139,7 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <select class="form-select" id="pageSizeSelect">
+                <select class="glass-select w-100" id="pageSizeSelect" aria-label="每页显示数量">
                     <option value="10">每页 10 条</option>
                     <option value="25" selected>每页 25 条</option>
                     <option value="50">每页 50 条</option>
@@ -109,56 +148,73 @@
             </div>
         </div>
 
-        <!-- Statistics -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="card bg-light">
-                    <div class="card-body py-2">
-                        <div class="row text-center">
-                            <div class="col-md-3">
-                                <strong>总计:</strong> <span id="totalCount">0</span>
-                            </div>
-                            <div class="col-md-3">
-                                <strong>连载中:</strong> <span id="returningCount">0</span>
-                            </div>
-                            <div class="col-md-3">
-                                <strong>已完结:</strong> <span id="endedCount">0</span>
-                            </div>
-                            <div class="col-md-3">
-                                <strong>当前页:</strong> <span id="currentPageInfo">1/1</span>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Glass Statistics Cards -->
+        <div class="row mb-3 g-3">
+            <div class="col-md-3 col-6">
+                <div class="glass-stats">
+                    <div class="stat-value" id="totalCount">0</div>
+                    <div class="stat-label">总计</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="glass-stats">
+                    <div class="stat-value" id="returningCount">0</div>
+                    <div class="stat-label">连载中</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="glass-stats">
+                    <div class="stat-value" id="endedCount">0</div>
+                    <div class="stat-label">已完结</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="glass-stats">
+                    <div class="stat-value" id="currentPageInfo">1/1</div>
+                    <div class="stat-label">当前页</div>
                 </div>
             </div>
         </div>
 
-        <!-- Loading Spinner -->
+        <!-- Loading Spinner with Glass Effect -->
         <div id="loadingSpinner" class="text-center my-5">
-            <div class="spinner-border text-primary" role="status">
+            <div class="glass-spinner mx-auto" role="status">
                 <span class="visually-hidden">加载中...</span>
             </div>
-            <p class="mt-2">加载中...</p>
+            <p class="mt-3 text-muted">加载中...</p>
         </div>
 
-        <!-- Shows Table -->
+        <!-- Shows Table with Glass Effect -->
         <div class="row">
             <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
+                <div class="glass-card">
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover table-striped" id="showsTable">
-                                <thead class="table-dark">
+                            <table class="table table-hover mb-0" id="showsTable">
+                                <thead>
                                     <tr>
                                         <th>
-                                            <input type="checkbox" class="form-check-input" id="selectAll">
+                                            <input type="checkbox" class="form-check-input" id="selectAll"
+                                                   aria-label="全选">
                                         </th>
-                                        <th data-sort="id">ID <i class="bi bi-arrow-down-up"></i></th>
-                                        <th data-sort="name">名称 <i class="bi bi-arrow-down-up"></i></th>
-                                        <th data-sort="original_name">原名 <i class="bi bi-arrow-down-up"></i></th>
-                                        <th data-sort="status">状态 <i class="bi bi-arrow-down-up"></i></th>
-                                        <th data-sort="first_air_date">首播日期 <i class="bi bi-arrow-down-up"></i></th>
-                                        <th data-sort="vote_average">评分 <i class="bi bi-arrow-down-up"></i></th>
+                                        <th data-sort="id" class="cursor-pointer">
+                                            ID <i class="bi bi-arrow-down-up ms-1 opacity-50"></i>
+                                        </th>
+                                        <th data-sort="name" class="cursor-pointer">
+                                            名称 <i class="bi bi-arrow-down-up ms-1 opacity-50"></i>
+                                        </th>
+                                        <th data-sort="original_name" class="cursor-pointer">
+                                            原名 <i class="bi bi-arrow-down-up ms-1 opacity-50"></i>
+                                        </th>
+                                        <th data-sort="status" class="cursor-pointer">
+                                            状态 <i class="bi bi-arrow-down-up ms-1 opacity-50"></i>
+                                        </th>
+                                        <th data-sort="first_air_date" class="cursor-pointer">
+                                            首播日期 <i class="bi bi-arrow-down-up ms-1 opacity-50"></i>
+                                        </th>
+                                        <th data-sort="vote_average" class="cursor-pointer">
+                                            评分 <i class="bi bi-arrow-down-up ms-1 opacity-50"></i>
+                                        </th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
@@ -168,9 +224,9 @@
                             </table>
                         </div>
 
-                        <!-- Pagination -->
-                        <nav aria-label="Page navigation" id="paginationNav">
-                            <ul class="pagination justify-content-center" id="pagination">
+                        <!-- Glass Pagination -->
+                        <nav aria-label="分页导航" id="paginationNav" class="p-3">
+                            <ul class="glass-pagination" id="pagination">
                                 <!-- 动态生成 -->
                             </ul>
                         </nav>
@@ -179,21 +235,26 @@
             </div>
         </div>
 
-        <!-- Batch Actions -->
+        <!-- Batch Actions with Glass Card -->
         <div class="row mt-3" id="batchActions" style="display: none;">
             <div class="col-12">
-                <div class="card border-warning">
+                <div class="glass-card" style="border-left: 4px solid var(--glass-accent);">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-check-square"></i> 批量操作</h5>
-                        <p class="card-text">已选择 <strong id="selectedCount">0</strong> 项</p>
-                        <div class="btn-group">
-                            <button class="btn btn-warning" id="batchRefreshBtn">
+                        <h5 class="card-title mb-2">
+                            <i class="bi bi-check-square"></i> 批量操作
+                        </h5>
+                        <p class="card-text mb-3">已选择 <strong id="selectedCount">0</strong> 项</p>
+                        <div class="btn-group flex-wrap gap-2" role="group">
+                            <button class="btn glass-btn glass-btn-warning" id="batchRefreshBtn"
+                                    aria-label="批量刷新选中的剧集">
                                 <i class="bi bi-arrow-clockwise"></i> 批量刷新
                             </button>
-                            <button class="btn btn-danger" id="batchDeleteBtn">
+                            <button class="btn glass-btn glass-btn-danger" id="batchDeleteBtn"
+                                    aria-label="批量删除选中的剧集">
                                 <i class="bi bi-trash"></i> 批量删除
                             </button>
-                            <button class="btn btn-secondary" id="clearSelectionBtn">
+                            <button class="btn glass-btn" id="clearSelectionBtn"
+                                    aria-label="取消选择">
                                 <i class="bi bi-x-square"></i> 取消选择
                             </button>
                         </div>
@@ -203,37 +264,43 @@
         </div>
     </div>
 
-    <!-- Add Show Modal -->
-    <div class="modal fade" id="addShowModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 添加剧集</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- Add Show Modal with Glass Effect -->
+    <div class="modal fade" id="addShowModal" tabindex="-1" aria-labelledby="addShowModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="glass-modal-content">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title" id="addShowModalLabel">
+                        <i class="bi bi-plus-circle text-primary"></i> 添加剧集
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
                 </div>
                 <div class="modal-body">
                     <form id="addShowForm">
                         <div class="mb-3">
-                            <label for="tmdbId" class="form-label">TMDB ID *</label>
+                            <label for="tmdbId" class="form-label">TMDB ID <span class="text-danger">*</span></label>
                             <div class="input-group">
-                                <input type="number" class="form-control" id="tmdbId" required>
-                                <button class="btn btn-outline-secondary" type="button" id="searchTmdbBtn">
+                                <input type="number" class="glass-input flex-grow-1" id="tmdbId" required
+                                       placeholder="例如: 94997">
+                                <button class="btn glass-btn" type="button" id="searchTmdbBtn"
+                                        aria-label="搜索 TMDB">
                                     <i class="bi bi-search"></i> 搜索
                                 </button>
                             </div>
-                            <div class="form-text">输入TMDB ID,然后点击搜索按钮自动填充信息</div>
+                            <div class="form-text mt-2">输入 TMDB ID，然后点击搜索按钮自动填充信息</div>
                         </div>
                         <div class="mb-3">
-                            <label for="showName" class="form-label">名称 *</label>
-                            <input type="text" class="form-control" id="showName" required>
+                            <label for="showName" class="form-label">名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="glass-input w-100" id="showName" required
+                                   placeholder="剧集名称">
                         </div>
                         <div class="mb-3">
                             <label for="originalName" class="form-label">原名</label>
-                            <input type="text" class="form-control" id="originalName">
+                            <input type="text" class="glass-input w-100" id="originalName"
+                                   placeholder="原始名称（可选）">
                         </div>
                         <div class="mb-3">
                             <label for="showStatus" class="form-label">状态</label>
-                            <select class="form-select" id="showStatus">
+                            <select class="glass-select w-100" id="showStatus">
                                 <option value="">自动检测</option>
                                 <option value="Returning Series">连载中</option>
                                 <option value="Ended">已完结</option>
@@ -242,13 +309,15 @@
                         </div>
                         <div class="mb-3">
                             <label for="showOverview" class="form-label">简介</label>
-                            <textarea class="form-control" id="showOverview" rows="3"></textarea>
+                            <textarea class="glass-input w-100" id="showOverview" rows="3"
+                                      placeholder="剧集简介（可选）"></textarea>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="saveShowBtn">
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn glass-btn" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn glass-btn glass-btn-primary" id="saveShowBtn"
+                            aria-label="保存剧集信息">
                         <i class="bi bi-save"></i> 保存
                     </button>
                 </div>
@@ -261,10 +330,59 @@
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Performance Optimization Toolkit -->
+    <script src="js/performance.js?v=1.0"></script>
     <!-- Common JS (合并: auth-check + api + feedback + auth-ui) -->
     <script src="js/common.js?v=2.7"></script>
     <!-- Page-specific JS -->
     <script src="js/modal.js?v=2.1"></script>
     <script src="js/shows.js?v=2.1"></script>
+
+    <!-- Theme Toggle Script -->
+    <script>
+    // Theme Management for Glassmorphism Design
+    (function() {
+        'use strict';
+
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+
+        // Get saved theme or system preference
+        const getPreferredTheme = () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                return savedTheme;
+            }
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        };
+
+        // Apply theme
+        const setTheme = (theme) => {
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            // Dispatch event for other components
+            window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
+        };
+
+        // Initialize theme
+        setTheme(getPreferredTheme());
+
+        // Toggle theme on click
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                setTheme(newTheme);
+            });
+        }
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            if (!localStorage.getItem('theme')) {
+                setTheme(e.matches ? 'dark' : 'light');
+            }
+        });
+    })();
+    </script>
 </body>
 </html>
