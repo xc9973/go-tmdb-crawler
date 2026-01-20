@@ -53,7 +53,8 @@ func (r *episodeRepository) Create(episode *models.Episode) error {
 	return r.db.Create(episode).Error
 }
 
-// CreateBatch creates multiple episodes in a single transaction
+// CreateBatch creates or updates multiple episodes in a single transaction
+// When conflict occurs (same show_id, season_number, episode_number), it updates all fields
 func (r *episodeRepository) CreateBatch(episodes []*models.Episode) error {
 	if len(episodes) == 0 {
 		return nil
@@ -64,7 +65,11 @@ func (r *episodeRepository) CreateBatch(episodes []*models.Episode) error {
 			{Name: "season_number"},
 			{Name: "episode_number"},
 		},
-		DoNothing: true,
+		// Update all columns except the conflict ones
+		DoUpdates: clause.AssignmentColumns([]string{
+			"name", "overview", "air_date", "still_path",
+			"runtime", "vote_average", "vote_count",
+		}),
 	}).CreateInBatches(episodes, 100).Error
 }
 
