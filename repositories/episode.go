@@ -6,7 +6,6 @@ import (
 	"github.com/xc9973/go-tmdb-crawler/models"
 	"github.com/xc9973/go-tmdb-crawler/utils"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // EpisodeRepository defines the interface for episode data operations
@@ -53,24 +52,24 @@ func (r *episodeRepository) Create(episode *models.Episode) error {
 	return r.db.Create(episode).Error
 }
 
-// CreateBatch creates or updates multiple episodes in a single transaction
-// When conflict occurs (same show_id, season_number, episode_number), it updates all fields
+// CreateBatch creates or updates multiple episodes
+// Uses individual Save operations for reliable upsert on all databases
+// Note: Save is slower than bulk operations but more reliable for upsert
 func (r *episodeRepository) CreateBatch(episodes []*models.Episode) error {
 	if len(episodes) == 0 {
 		return nil
 	}
-	return r.db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{
-			{Name: "show_id"},
-			{Name: "season_number"},
-			{Name: "episode_number"},
-		},
-		// Update all columns except the conflict ones
-		DoUpdates: clause.AssignmentColumns([]string{
-			"name", "overview", "air_date", "still_path",
-			"runtime", "vote_average", "vote_count",
-		}),
-	}).CreateInBatches(episodes, 100).Error
+
+	// Use transaction for atomicity
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for _, ep := range episodes {
+			// Save will update if exists (by unique constraint), insert if not
+			if err := tx.Save(ep).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // GetByID retrieves an episode by ID
