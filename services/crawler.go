@@ -53,7 +53,7 @@ type CrawlResult struct {
 func (s *CrawlerService) CrawlShow(tmdbID int) error {
 	startTime := time.Now()
 
-	// Fetch show details from TMDB
+	// Step 1: Fetch show details from TMDB first (before any DB writes)
 	tmdbShow, err := s.tmdb.GetShowDetails(tmdbID)
 	if err != nil {
 		s.createCrawlLog(nil, tmdbID, "fetch", "failed", 0, err.Error(), startTime)
@@ -63,10 +63,11 @@ func (s *CrawlerService) CrawlShow(tmdbID int) error {
 	// Parse dates
 	firstAirDate, _ := ParseDate(tmdbShow.FirstAirDate)
 
-	// Check if show already exists
+	// Step 2: Check if show already exists (no write yet)
 	show, err := s.showRepo.GetByTmdbID(tmdbID)
+	var isNewShow bool
 	if err != nil {
-		// Create new show
+		// Prepare new show object (don't create yet)
 		show = &models.Show{
 			TmdbID:       tmdbShow.ID,
 			Name:         tmdbShow.Name,
@@ -87,12 +88,9 @@ func (s *CrawlerService) CrawlShow(tmdbID int) error {
 			show.Genres = string(genresJSON)
 		}
 
-		if err := s.showRepo.Create(show); err != nil {
-			s.createCrawlLog(nil, tmdbID, "fetch", "failed", 0, err.Error(), startTime)
-			return fmt.Errorf("failed to create show: %w", err)
-		}
+		isNewShow = true
 	} else {
-		// Update existing show
+		// Prepare updated show data (don't update yet)
 		show.Name = tmdbShow.Name
 		show.OriginalName = tmdbShow.OriginalName
 		show.Status = tmdbShow.Status
@@ -108,35 +106,99 @@ func (s *CrawlerService) CrawlShow(tmdbID int) error {
 			show.Genres = string(genresJSON)
 		}
 
+		isNewShow = false
+	}
+
+	// Step 3: Fetch all season/episode data first (before any DB writes)
+	type SeasonData struct {
+		SeasonNumber int
+		Episodes    []*models.Episode
+	}
+
+	allSeasonsData := make([]SeasonData, 0, len(tmdbShow.Seasons))
+
+	for _, season := range tmdbShow.Seasons {
+		if season.SeasonNumber == 0 {
+			continue // Skip specials
+		}
+
+		// Fetch season details from TMDB
+		tmdbSeason, err := s.tmdb.GetSeasonEpisodes(tmdbID, season.SeasonNumber)
+		if err != nil {
+			s.createCrawlLog(nil, tmdbID, "fetch", "failed", 0,
+				fmt.Sprintf("failed to fetch season %d: %s", season.SeasonNumber, err.Error()), startTime)
+			return fmt.Errorf("failed to fetch season %d: %w", season.SeasonNumber, err)
+		}
+
+		var episodes []*models.Episode
+		for _, tmdbEpisode := range tmdbSeason.Episodes {
+			airDate, _ := ParseDate(tmdbEpisode.AirDate)
+
+			episode := &models.Episode{
+				SeasonNumber:  tmdbEpisode.SeasonNumber,
+				EpisodeNumber: tmdbEpisode.EpisodeNumber,
+				Name:          tmdbEpisode.Name,
+				Overview:      tmdbEpisode.Overview,
+				AirDate:       airDate,
+				StillPath:     tmdbEpisode.StillPath,
+				Runtime:       tmdbEpisode.Runtime,
+				VoteAverage:   tmdbEpisode.VoteAverage,
+				VoteCount:     tmdbEpisode.VoteCount,
+			}
+
+			episodes = append(episodes, episode)
+		}
+
+		allSeasonsData = append(allSeasonsData, SeasonData{
+			SeasonNumber: season.SeasonNumber,
+			Episodes:    episodes,
+		})
+	}
+
+	// Step 4: All data fetched successfully, now write to database
+
+	// Create or update the show record
+	if isNewShow {
+		if err := s.showRepo.Create(show); err != nil {
+			s.createCrawlLog(nil, tmdbID, "fetch", "failed", 0, err.Error(), startTime)
+			return fmt.Errorf("failed to create show: %w", err)
+		}
+	} else {
 		if err := s.showRepo.Update(show); err != nil {
 			s.createCrawlLog(&show.ID, tmdbID, "fetch", "failed", 0, err.Error(), startTime)
 			return fmt.Errorf("failed to update show: %w", err)
 		}
 	}
 
-	// Crawl all seasons
+	// Step 5: Write all episodes to database
 	totalEpisodes := 0
-	for _, season := range tmdbShow.Seasons {
-		if season.SeasonNumber == 0 {
-			continue // Skip specials
+	for _, seasonData := range allSeasonsData {
+		// Set ShowID for all episodes
+		for _, ep := range seasonData.Episodes {
+			ep.ShowID = uint(show.ID)
 		}
 
-		episodes, err := s.crawlSeason(int(show.ID), tmdbID, season.SeasonNumber)
-		if err != nil {
+		// Batch create/update episodes
+		if err := s.episodeRepo.CreateBatch(seasonData.Episodes); err != nil {
 			s.createCrawlLog(&show.ID, tmdbID, "fetch", "partial", totalEpisodes, err.Error(), startTime)
-			return fmt.Errorf("failed to crawl season %d: %w", season.SeasonNumber, err)
+			return fmt.Errorf("failed to save episodes for season %d: %w", seasonData.SeasonNumber, err)
 		}
-		totalEpisodes += len(episodes)
+		totalEpisodes += len(seasonData.Episodes)
 	}
 
-	// Update show metadata
+	// Step 6: Update show metadata
 	if len(tmdbShow.Seasons) > 0 {
 		lastSeason := tmdbShow.Seasons[len(tmdbShow.Seasons)-1]
 		show.LastSeasonNumber = lastSeason.SeasonNumber
 		show.LastEpisodeCount = lastSeason.EpisodeCount
 	}
 	show.LastCrawledAt = &[]time.Time{time.Now()}[0]
-	s.showRepo.Update(show)
+	if err := s.showRepo.Update(show); err != nil {
+		// Log warning but don't fail - the main data is already saved
+		s.createCrawlLog(&show.ID, tmdbID, "fetch", "partial", totalEpisodes,
+			fmt.Sprintf("saved but failed to update metadata: %s", err.Error()), startTime)
+		return fmt.Errorf("data saved but failed to update metadata: %w", err)
+	}
 
 	// Create success log
 	s.createCrawlLog(&show.ID, tmdbID, "fetch", "success", totalEpisodes, "", startTime)
@@ -144,7 +206,8 @@ func (s *CrawlerService) CrawlShow(tmdbID int) error {
 	return nil
 }
 
-// crawlSeason crawls a specific season
+// crawlSeason crawls a specific season (legacy, kept for potential future use)
+// Note: This function writes to database immediately. Use with caution.
 func (s *CrawlerService) crawlSeason(showID, tmdbID, seasonNumber int) ([]*models.Episode, error) {
 	// Fetch season details from TMDB
 	tmdbSeason, err := s.tmdb.GetSeasonEpisodes(tmdbID, seasonNumber)
@@ -170,9 +233,6 @@ func (s *CrawlerService) crawlSeason(showID, tmdbID, seasonNumber int) ([]*model
 			VoteCount:     tmdbEpisode.VoteCount,
 		}
 
-		// Check if episode already exists
-		// For simplicity, we'll just update/create
-		// In production, you might want to check and update instead
 		episodes = append(episodes, episode)
 	}
 
