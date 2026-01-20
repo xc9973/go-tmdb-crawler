@@ -7,6 +7,9 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #3392 | 6:03 PM | 🔄 | Episode batch write optimization in crawler service | ~246 |
+| #3377 | 4:54 PM | ✅ | Committed data consistency bug fix to local git repository | ~296 |
+| #3376 | " | 🟣 | Enhanced crawler service with transaction support and improved error handling | ~343 |
 | #3374 | 4:51 PM | 🔄 | Crawler service cleanup and documentation added | ~232 |
 | #3373 | " | 🔴 | Fixed race condition causing partial database writes on crawl failures | ~508 |
 </claude-mem-context>

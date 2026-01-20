@@ -179,62 +179,53 @@ if isNewShow {
 }
 ```
 
-### Step 4: 写入集数信息 (关键步骤)
+### Step 4: 写入集数信息 (关键步骤 - 已优化)
 
-**repositories/episode.go:CreateBatch**
+**repositories/episode.go:CreateBatch** (当前版本)
 
 ```go
 func (r *episodeRepository) CreateBatch(episodes []*models.Episode) error {
     return r.db.Transaction(func(tx *gorm.DB) error {
-        // 4.1 查询该 show 的所有现有 episodes
-        var existing []*models.Episode
-        tx.Where("show_id = ?", showID).Find(&existing)
-        // SELECT * FROM episodes WHERE show_id = ?
+        // 4.1 删除该 show 的所有旧 episodes
+        tx.Where("show_id = ?", showID).Delete(&models.Episode{})
+        // DELETE FROM episodes WHERE show_id = ?
 
-        // 4.2 构建哈希表用于快速查找
-        existingMap := make(map[string]*models.Episode)
-        for _, ep := range existing {
-            key := fmt.Sprintf("%d:%d", ep.SeasonNumber, ep.EpisodeNumber)
-            // 例如: "1:5" = Season 1, Episode 5
-            existingMap[key] = ep
-        }
+        // 4.2 批量插入所有新 episodes
+        tx.CreateInBatches(episodes, 100)
+        // INSERT INTO episodes (...) VALUES (...), (...), (...)
+        //   GORM 自动批量插入，100 条一批
 
-        // 4.3 逐个处理: 更新已存在的，创建不存在的
-        for _, ep := range episodes {
-            key := fmt.Sprintf("%d:%d", ep.SeasonNumber, ep.EpisodeNumber)
-            if existingEp, found := existingMap[key] {
-                // === 已存在: 执行 UPDATE ===
-                ep.ID = existingEp.ID           // 设置 ID 使 GORM 执行 UPDATE
-                ep.CreatedAt = existingEp.CreatedAt
-                tx.Save(ep)
-                // UPDATE episodes SET name=?, overview=?, ...
-                // WHERE id = ? (使用主键)
-            } else {
-                // === 不存在: 执行 INSERT ===
-                tx.Create(ep)
-                // INSERT INTO episodes (show_id, season_number, ...) VALUES (...)
-            }
-        }
         return nil
     })
 }
 ```
 
+**优点**:
+1. **数据一致性**: TMDB 返回什么，数据库就存什么
+2. **性能**: 固定 2 次数据库操作（DELETE + INSERT）
+3. **简洁**: 不需要复杂的 upsert 逻辑
+
 **SQL 执行示例**:
 
-假设 show_id=1，刷新时有 3 个新集数:
+假设 show_id=1，TMDB 返回 3 个集数:
 
 ```sql
--- 4.1 查询现有集数
-SELECT * FROM episodes WHERE show_id = 1;
--- 返回: [{id:10, show_id:1, season_number:1, episode_number:1, ...},
---        {id:11, show_id:1, season_number:1, episode_number:2, ...}]
+-- 4.1 删除旧集数
+DELETE FROM episodes WHERE show_id = 1;
+-- 影响: 删除所有旧集数，同时 CASCADE 删除 uploaded_episodes 关联记录
 
--- 4.3 处理新集数
--- S01E01 已存在 (id=10) -> UPDATE episodes SET ... WHERE id=10
--- S01E02 已存在 (id=11) -> UPDATE episodes SET ... WHERE id=11
--- S01E03 不存在        -> INSERT INTO episodes (show_id, season_number, episode_number, ...) VALUES (1, 1, 3, ...)
+-- 4.2 批量插入新集数
+INSERT INTO episodes (show_id, season_number, episode_number, name, ...)
+VALUES (1, 1, 1, 'Episode 1', ...),
+       (1, 1, 2, 'Episode 2', ...),
+       (1, 1, 3, 'Episode 3', ...);
+-- 一次性插入，GORM 自动分批（每批100条）
 ```
+
+**重要说明**:
+- `created_at` 会更新为当前时间（新创建的时间戳）
+- `uploaded_episodes` 表会通过 `ON DELETE CASCADE` 自动清理关联记录
+- 如果 TMDB 删除了某集，数据库中也会被删除（符合预期）
 
 ### Step 5: 更新元数据
 
@@ -260,7 +251,19 @@ s.showRepo.Update(show)
 | 4.1 | 1 次 | SELECT episodes WHERE show_id=? |
 | 4.3 | N 次 | UPDATE/INSERT 逐个集数 (N=集数) |
 | 5.1 | 1 次 | UPDATE shows SET metadata WHERE id=? |
-| **总计** | **N+3 次** | 对于 20 集的剧集 ≈ 23 次查询 |
+| **总计 (旧版)** | **N+3 次** | 对于 20 集的剧集 ≈ 23 次查询 |
+
+### 优化后的性能 (当前版本)
+
+| 步骤 | 查询 | 说明 |
+|------|------|------|
+| 1.1 | 1 次 | SELECT shows WHERE tmdb_id=? |
+| 4.1 | 1 次 | DELETE episodes WHERE show_id=? |
+| 4.2 | 1 次 | INSERT INTO episodes (...) VALUES (...) (批量) |
+| 5.1 | 1 次 | UPDATE shows SET metadata WHERE id=? |
+| **总计 (新版)** | **4 次** | 固定 4 次查询，与集数无关！ |
+
+**性能提升**: 20 集剧集从 23 次查询降低到 4 次查询，提升约 **83%**。
 
 ### 瓶颈点
 
@@ -276,51 +279,56 @@ s.showRepo.Update(show)
 
 ## 已知问题与优化建议
 
-### 问题 1: 逐个 Save 性能差
+### ✅ 已修复的问题
 
-**现状**:
-```go
-for _, ep := range episodes {
-    tx.Save(ep)  // N 次写入
-}
+#### 问题 1: 按季调用导致的重复查询 (已修复)
+
+**问题**: 每季调用一次 CreateBatch，每次都查询所有集数
+```
+第1季: 查询100集 → 处理20集
+第2季: 查询100集 → 处理20集
+第3季: 查询100集 → 处理20集
+第4季: 查询100集 → 处理20集
+第5季: 查询100集 → 处理20集
 ```
 
-**优化方案**: 使用原生 SQL UPSERT (需要数据库支持)
+**解决方案**: 合并所有季的集数，一次性调用 CreateBatch
+```
+一次性查询100集 → 一次性处理100集
+```
+
+**效果**: 5 次查询 → 1 次查询
+
+#### 问题 2: 旧集数不删除 (已修复)
+
+**问题**: TMDB 删除了某集，但数据库中仍保留
+```
+数据库: 第1-10集
+TMDB:    第1-8集
+结果:   第9-10集成为"僵尸"数据
+```
+
+**解决方案**: 先删除所有旧集数，再插入新集数
 ```sql
-INSERT INTO episodes (show_id, season_number, episode_number, name, ...)
-VALUES (1, 1, 1, 'Episode 1', ...),
-       (1, 1, 2, 'Episode 2', ...)
-ON CONFLICT(show_id, season_number, episode_number)
-DO UPDATE SET name=excluded.name, overview=excluded.overview, ...;
+DELETE FROM episodes WHERE show_id = ?
+INSERT INTO episodes (...) VALUES (...)
 ```
 
-**限制**: SQLite 需要特定语法，PostgreSQL 支持更好。
+**效果**: 数据库与 TMDB 完全同步
 
-### 问题 2: 先查询后写入的两阶段操作
+### 潜在的权衡
 
-**现状**:
-```
-Query existing → Build map → Query + Write per episode
-```
+#### created_at 时间戳
 
-**优化可能性**:
-- 如果能保证 episodes 完全替换 (不保留历史)，可以先 DELETE 后批量 INSERT
-- 但当前需要保留 `created_at`，所以需要区分更新/创建
+**当前行为**: 刷新剧集时，所有集数的 `created_at` 会更新为当前时间
 
-### 问题 3: GORM Save 的行为
+**影响**:
+- ❌ 无法通过 `created_at` 追踪原始添加时间
+- ✅ 但数据一致性更重要（与 TMDB 同步）
 
-**陷阱**: `Save()` 只根据主键 ID 判断 UPDATE/INSERT
-```go
-// ❌ 错误理解
-ep.ID = 0
-Save(ep)  // 会 INSERT，但可能违反唯一约束!
-
-// ✅ 正确做法
-if existing {
-    ep.ID = existing.ID  // 必须设置 ID
-}
-Save(ep)  // 才会 UPDATE
-```
+**如果需要保留原始时间**，可以考虑:
+1. 增加字段 `original_created_at`
+2. 或使用 upsert 模式（但性能较差）
 
 ---
 

@@ -170,21 +170,24 @@ func (s *CrawlerService) CrawlShow(tmdbID int) error {
 		}
 	}
 
-	// Step 5: Write all episodes to database
-	totalEpisodes := 0
+	// Step 5: Write all episodes to database in one batch
+	// Collect all episodes from all seasons
+	allEpisodes := make([]*models.Episode, 0)
 	for _, seasonData := range allSeasonsData {
 		// Set ShowID for all episodes
 		for _, ep := range seasonData.Episodes {
 			ep.ShowID = uint(show.ID)
 		}
-
-		// Batch create/update episodes
-		if err := s.episodeRepo.CreateBatch(seasonData.Episodes); err != nil {
-			s.createCrawlLog(&show.ID, tmdbID, "fetch", "partial", totalEpisodes, err.Error(), startTime)
-			return fmt.Errorf("failed to save episodes for season %d: %w", seasonData.SeasonNumber, err)
-		}
-		totalEpisodes += len(seasonData.Episodes)
+		allEpisodes = append(allEpisodes, seasonData.Episodes...)
 	}
+
+	// Batch create/update all episodes at once
+	if err := s.episodeRepo.CreateBatch(allEpisodes); err != nil {
+		s.createCrawlLog(&show.ID, tmdbID, "fetch", "partial", 0, err.Error(), startTime)
+		return fmt.Errorf("failed to save episodes: %w", err)
+	}
+
+	totalEpisodes := len(allEpisodes)
 
 	// Step 6: Update show metadata
 	if len(tmdbShow.Seasons) > 0 {

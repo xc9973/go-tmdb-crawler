@@ -54,7 +54,8 @@ func (r *episodeRepository) Create(episode *models.Episode) error {
 }
 
 // CreateBatch creates or updates multiple episodes
-// First queries existing episodes by their unique constraint, then creates/updates accordingly
+// Deletes all existing episodes for the show, then inserts the new ones
+// This ensures data consistency when episodes are removed from TMDB
 func (r *episodeRepository) CreateBatch(episodes []*models.Episode) error {
 	if len(episodes) == 0 {
 		return nil
@@ -65,35 +66,15 @@ func (r *episodeRepository) CreateBatch(episodes []*models.Episode) error {
 
 	// Use transaction for atomicity
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Step 1: Fetch existing episodes for this show
-		var existing []*models.Episode
-		if err := tx.Where("show_id = ?", showID).Find(&existing).Error; err != nil {
-			return err
+		// Step 1: Delete all existing episodes for this show
+		// This ensures we don't have stale episodes that were removed from TMDB
+		if err := tx.Where("show_id = ?", showID).Delete(&models.Episode{}).Error; err != nil {
+			return fmt.Errorf("failed to delete old episodes: %w", err)
 		}
 
-		// Step 2: Build a map for quick lookup: key = "season_number:episode_number"
-		existingMap := make(map[string]*models.Episode)
-		for _, ep := range existing {
-			key := fmt.Sprintf("%d:%d", ep.SeasonNumber, ep.EpisodeNumber)
-			existingMap[key] = ep
-		}
-
-		// Step 3: For each episode, either update existing or create new
-		for _, ep := range episodes {
-			key := fmt.Sprintf("%d:%d", ep.SeasonNumber, ep.EpisodeNumber)
-			if existingEp, found := existingMap[key]; found {
-				// Update existing episode - copy the ID so GORM knows to update
-				ep.ID = existingEp.ID
-				ep.CreatedAt = existingEp.CreatedAt // Preserve original created_at
-				if err := tx.Save(ep).Error; err != nil {
-					return fmt.Errorf("failed to update episode S%02dE%02d: %w", ep.SeasonNumber, ep.EpisodeNumber, err)
-				}
-			} else {
-				// Create new episode
-				if err := tx.Create(ep).Error; err != nil {
-					return fmt.Errorf("failed to create episode S%02dE%02d: %w", ep.SeasonNumber, ep.EpisodeNumber, err)
-				}
-			}
+		// Step 2: Batch insert all new episodes
+		if err := tx.CreateInBatches(episodes, 100).Error; err != nil {
+			return fmt.Errorf("failed to insert episodes: %w", err)
 		}
 
 		return nil
