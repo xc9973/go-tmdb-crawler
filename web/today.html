@@ -15,11 +15,11 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Glassmorphism Design System -->
-    <link href="css/glassmorphism.css?v=1.1" rel="stylesheet">
+    <link href="css/glassmorphism.css?v=2.0" rel="stylesheet">
     <!-- Performance Optimization CSS -->
     <link href="css/performance.css?v=1.0" rel="stylesheet">
     <!-- Custom CSS -->
-    <link href="css/custom.css?v=1.1" rel="stylesheet">
+    <link href="css/custom.css?v=2.0" rel="stylesheet">
     <!-- Responsive CSS -->
     <link href="css/responsive.css?v=1.0" rel="stylesheet">
 
@@ -232,13 +232,13 @@
         const themeToggle = document.getElementById('themeToggle');
         const html = document.documentElement;
 
-        // Get saved theme or system preference
+        // Get saved theme or default to dark
         const getPreferredTheme = () => {
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme) {
                 return savedTheme;
             }
-            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            return 'dark'; // Default to dark theme
         };
 
         // Apply theme

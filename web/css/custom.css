@@ -29,7 +29,7 @@ body {
 }
 
 .table th:hover {
-    background-color: #343a40 !important;
+    background-color: rgba(14, 165, 233, 0.15) !important;
 }
 
 .table th i {
@@ -72,34 +72,36 @@ body {
     min-width: 300px;
 }
 
-/* Pagination */
+/* Pagination - Dark Theme */
 .pagination .page-link {
-    color: #0EA5E9;
+    color: #38BDF8;
     text-decoration: none;
-    background-color: #fff;
-    border: 1px solid #dee2e6;
+    background-color: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 0.375rem 0.75rem;
     display: block;
     position: relative;
 }
 
 .pagination .page-link:hover {
-    background-color: #e9ecef;
-    border-color: #dee2e6;
+    background-color: rgba(51, 65, 85, 0.9);
+    border-color: #0EA5E9;
+    color: #38BDF8;
 }
 
 .pagination .page-item.active .page-link {
     background-color: #0EA5E9;
     border-color: #0EA5E9;
-    color: #fff;
+    color: #0F172A;
+    font-weight: 600;
     z-index: 3;
 }
 
 .pagination .page-item.disabled .page-link {
-    color: #6c757d;
+    color: #64748B;
     pointer-events: none;
-    background-color: #fff;
-    border-color: #dee2e6;
+    background-color: rgba(30, 41, 59, 0.5);
+    border-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Responsive */
@@ -120,7 +122,7 @@ body {
 }
 
 .table tbody tr:hover {
-    background-color: rgba(0, 0, 0, 0.075);
+    background-color: rgba(14, 165, 233, 0.08);
 }
 
 /* Animations */
@@ -153,23 +155,23 @@ body {
     z-index: 9999;
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Dark Theme */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: #1E293B;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #888;
+    background: #475569;
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: #64748B;
 }
 
 /* 上传标记按钮 */
@@ -276,17 +278,17 @@ body {
 }
 
 .episode-list-row .episode-row:hover {
-    background-color: #f8f9fa;
+    background-color: rgba(14, 165, 233, 0.1);
 }
 
 .episode-list-row .episode-code {
     font-family: monospace;
     font-weight: 600;
-    color: #495057;
+    color: #CBD5E1;
     font-size: 0.95rem;
 }
 
 .episode-list-row .episode-name {
-    color: #212529;
+    color: #F1F5F9;
     font-size: 0.95rem;
 }
