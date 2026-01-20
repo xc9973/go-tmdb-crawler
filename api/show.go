@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -17,6 +18,7 @@ type ShowAPI struct {
 	showRepo    repositories.ShowRepository
 	episodeRepo repositories.EpisodeRepository
 	crawler     *services.CrawlerService
+	cache       services.CacheService
 }
 
 // NewShowAPI creates a new show API instance
@@ -24,11 +26,13 @@ func NewShowAPI(
 	showRepo repositories.ShowRepository,
 	episodeRepo repositories.EpisodeRepository,
 	crawler *services.CrawlerService,
+	cache services.CacheService,
 ) *ShowAPI {
 	return &ShowAPI{
 		showRepo:    showRepo,
 		episodeRepo: episodeRepo,
 		crawler:     crawler,
+		cache:       cache,
 	}
 }
 
@@ -46,6 +50,21 @@ func (api *ShowAPI) ListShows(c *gin.Context) {
 	}
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
+	}
+
+	// Build cache key
+	cacheKey := services.ShowCacheKeyBuilder.Build("list", fmt.Sprintf("p%d_s%d_%s_%s", page, pageSize, status, search))
+
+	var response dto.ListResponse
+	ctx := context.Background()
+
+	// Try cache first
+	if search == "" && status == "" {
+		// Only cache unfiltered list requests
+		if err := api.cache.Get(ctx, cacheKey, &response); err == nil {
+			c.JSON(http.StatusOK, dto.Success(response))
+			return
+		}
 	}
 
 	var shows []*models.Show
@@ -70,12 +89,17 @@ func (api *ShowAPI) ListShows(c *gin.Context) {
 		totalPages++
 	}
 
-	response := dto.ListResponse{
+	response = dto.ListResponse{
 		Items:      shows,
 		Total:      total,
 		Page:       page,
 		PageSize:   pageSize,
 		TotalPages: totalPages,
+	}
+
+	// Cache unfiltered list responses
+	if search == "" && status == "" {
+		api.cache.Set(ctx, cacheKey, response, services.CacheTTLMedium)
 	}
 
 	c.JSON(http.StatusOK, dto.Success(response))
@@ -90,11 +114,29 @@ func (api *ShowAPI) GetShow(c *gin.Context) {
 		return
 	}
 
-	show, err := api.showRepo.GetByID(uint(id))
+	// Build cache key
+	cacheKey := services.ShowCacheKeyBuilder.Build("detail", idStr)
+	ctx := context.Background()
+
+	var show models.Show
+
+	// Try cache first
+	if err := api.cache.Get(ctx, cacheKey, &show); err == nil {
+		c.JSON(http.StatusOK, dto.Success(show))
+		return
+	}
+
+	// Cache miss, fetch from DB
+	showData, err := api.showRepo.GetByID(uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, dto.NotFound("Show not found"))
 		return
 	}
+
+	show = *showData
+
+	// Cache the result
+	api.cache.Set(ctx, cacheKey, show, services.CacheTTLLong)
 
 	c.JSON(http.StatusOK, dto.Success(show))
 }
@@ -121,6 +163,9 @@ func (api *ShowAPI) CreateShow(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
 		return
 	}
+
+	// Invalidate show list cache
+	api.cache.InvalidatePattern(context.Background(), "show:list*")
 
 	// Get the created show
 	show, err := api.showRepo.GetByTmdbID(req.TmdbID)
@@ -164,6 +209,10 @@ func (api *ShowAPI) UpdateShow(c *gin.Context) {
 		return
 	}
 
+	// Invalidate caches
+	api.cache.Delete(context.Background(), services.ShowCacheKeyBuilder.Build("detail", idStr))
+	api.cache.InvalidatePattern(context.Background(), "show:list*")
+
 	c.JSON(http.StatusOK, dto.SuccessWithMessage("Show updated successfully", &req))
 }
 
@@ -180,6 +229,10 @@ func (api *ShowAPI) DeleteShow(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
 		return
 	}
+
+	// Invalidate caches
+	api.cache.Delete(context.Background(), services.ShowCacheKeyBuilder.Build("detail", idStr))
+	api.cache.InvalidatePattern(context.Background(), "show:list*")
 
 	c.JSON(http.StatusOK, dto.SuccessWithMessage("Show deleted successfully", nil))
 }
@@ -205,6 +258,12 @@ func (api *ShowAPI) RefreshShow(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
 		return
 	}
+
+	// Invalidate caches
+	api.cache.Delete(context.Background(), services.ShowCacheKeyBuilder.Build("detail", idStr))
+	api.cache.InvalidatePattern(context.Background(), "show:list*")
+	api.cache.InvalidatePattern(context.Background(), "episode*")
+	api.cache.InvalidatePattern(context.Background(), "today*")
 
 	// Get updated show
 	updatedShow, err := api.showRepo.GetByID(uint(id))
@@ -250,6 +309,18 @@ func (api *ShowAPI) GetShowEpisodes(c *gin.Context) {
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.BadRequest("Invalid show ID"))
+		return
+	}
+
+	// Build cache key
+	cacheKey := services.EpisodeCacheKeyBuilder.Build("show", idStr)
+	ctx := context.Background()
+
+	var response map[string]interface{}
+
+	// Try cache first
+	if err := api.cache.Get(ctx, cacheKey, &response); err == nil {
+		c.JSON(http.StatusOK, dto.Success(response))
 		return
 	}
 
@@ -301,11 +372,14 @@ func (api *ShowAPI) GetShowEpisodes(c *gin.Context) {
 		}
 	}
 
-	response := map[string]interface{}{
+	response = map[string]interface{}{
 		"show":    show,
 		"seasons": result,
 		"total":   len(episodes),
 	}
+
+	// Cache the result
+	api.cache.Set(ctx, cacheKey, response, services.CacheTTLLong)
 
 	c.JSON(http.StatusOK, dto.Success(response))
 }

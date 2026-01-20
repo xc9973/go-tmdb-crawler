@@ -115,7 +115,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	logger := utils.NewLogger(cfg.App.LogLevel, cfg.Paths.Log)
 	scheduler := services.NewScheduler(crawler, publisher, logger)
 
-	showAPI := NewShowAPI(showRepo, episodeRepo, crawler)
+	// Initialize cache service (after logger is available)
+	cacheService := services.NewMemoryCacheService(15*time.Minute, logger)
+
+	showAPI := NewShowAPI(showRepo, episodeRepo, crawler, cacheService)
 	crawlerAPI := NewCrawlerAPI(crawler, showRepo, crawlLogRepo, episodeRepo, taskManager)
 	markdownService := services.NewMarkdownService(episodeRepo, showRepo)
 	markdownService.SetTimezoneHelper(timezoneHelper)

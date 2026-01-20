@@ -8,4 +8,17 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #729 | 11:02 AM | 🔵 | Episode upload tracking API endpoints identified | ~268 |
+
+### Jan 20, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #3409 | 6:24 PM | 🔄 | Major web frontend refactoring and API enhancements | ~389 |
+| #3408 | 6:23 PM | 🟣 | Initialized in-memory cache service with 15-minute TTL for API responses | ~323 |
+| #3407 | 6:22 PM | 🟣 | Added caching support to GetShowEpisodes API endpoint | ~353 |
+| #3406 | " | 🟣 | Cache invalidation added to DeleteShow endpoint | ~228 |
+| #3405 | " | 🟣 | Cache invalidation added to show update endpoint | ~208 |
+| #3404 | 6:21 PM | 🟣 | Cache invalidation added to show creation endpoint | ~265 |
+| #3403 | " | 🟣 | Added caching layer to show detail API endpoint | ~316 |
+| #3402 | " | 🟣 | Added caching layer to show list API endpoint for improved performance | ~410 |
 </claude-mem-context>
