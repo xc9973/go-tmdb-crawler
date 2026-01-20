@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/xc9973/go-tmdb-crawler/models"
@@ -53,21 +54,48 @@ func (r *episodeRepository) Create(episode *models.Episode) error {
 }
 
 // CreateBatch creates or updates multiple episodes
-// Uses individual Save operations for reliable upsert on all databases
-// Note: Save is slower than bulk operations but more reliable for upsert
+// First queries existing episodes by their unique constraint, then creates/updates accordingly
 func (r *episodeRepository) CreateBatch(episodes []*models.Episode) error {
 	if len(episodes) == 0 {
 		return nil
 	}
 
+	// Get show ID from first episode
+	showID := episodes[0].ShowID
+
 	// Use transaction for atomicity
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Step 1: Fetch existing episodes for this show
+		var existing []*models.Episode
+		if err := tx.Where("show_id = ?", showID).Find(&existing).Error; err != nil {
+			return err
+		}
+
+		// Step 2: Build a map for quick lookup: key = "season_number:episode_number"
+		existingMap := make(map[string]*models.Episode)
+		for _, ep := range existing {
+			key := fmt.Sprintf("%d:%d", ep.SeasonNumber, ep.EpisodeNumber)
+			existingMap[key] = ep
+		}
+
+		// Step 3: For each episode, either update existing or create new
 		for _, ep := range episodes {
-			// Save will update if exists (by unique constraint), insert if not
-			if err := tx.Save(ep).Error; err != nil {
-				return err
+			key := fmt.Sprintf("%d:%d", ep.SeasonNumber, ep.EpisodeNumber)
+			if existingEp, found := existingMap[key]; found {
+				// Update existing episode - copy the ID so GORM knows to update
+				ep.ID = existingEp.ID
+				ep.CreatedAt = existingEp.CreatedAt // Preserve original created_at
+				if err := tx.Save(ep).Error; err != nil {
+					return fmt.Errorf("failed to update episode S%02dE%02d: %w", ep.SeasonNumber, ep.EpisodeNumber, err)
+				}
+			} else {
+				// Create new episode
+				if err := tx.Create(ep).Error; err != nil {
+					return fmt.Errorf("failed to create episode S%02dE%02d: %w", ep.SeasonNumber, ep.EpisodeNumber, err)
+				}
 			}
 		}
+
 		return nil
 	})
 }
