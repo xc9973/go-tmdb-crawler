@@ -1,4 +1,4 @@
-/* Custom Styles for TMDB Crawler Web Interface - Dark Enhanced */
+/* Custom Styles for TMDB Crawler Web Interface - Dark Enhanced v2 */
 
 /* Global Styles */
 body {
@@ -32,29 +32,32 @@ body {
     opacity: 0.5;
 }
 
-/* Status Badges */
+/* Status Badges - Enhanced Contrast */
 .badge-returning {
-    background: rgba(16, 185, 129, 0.25);
-    color: #34D399;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    background: rgba(34, 197, 94, 0.35);
+    color: #4ADE80;
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.35);
+    font-weight: 700;
 }
 
 .badge-ended {
-    background: rgba(107, 114, 128, 0.25);
-    color: #9CA3AF;
-    box-shadow: 0 0 10px rgba(107, 114, 128, 0.2);
+    background: rgba(107, 114, 128, 0.35);
+    color: #D1D5DB;
+    box-shadow: 0 0 15px rgba(107, 114, 128, 0.35);
+    font-weight: 700;
 }
 
 .badge-canceled {
-    background: rgba(239, 68, 68, 0.25);
-    color: #F87171;
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+    background: rgba(239, 68, 68, 0.35);
+    color: #FCA5A5;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.35);
+    font-weight: 700;
 }
 
 /* Rating Stars */
 .rating-stars {
     color: #FBBF24;
-    text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+    text-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
 }
 
 /* Action Buttons */
@@ -76,38 +79,39 @@ body {
 
 /* Pagination - Enhanced Dark Theme */
 .pagination .page-link {
-    color: #22D3EE;
+    color: #38BDF8;
     text-decoration: none;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(34, 211, 238, 0.2);
+    background: rgba(20, 30, 50, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.3);
     padding: 0.375rem 0.75rem;
     display: block;
     position: relative;
     backdrop-filter: blur(8px);
     transition: all 0.2s ease;
+    font-weight: 600;
 }
 
 .pagination .page-link:hover {
-    background: rgba(30, 41, 59, 0.8);
-    border-color: #22D3EE;
-    color: #67E8F9;
-    box-shadow: 0 0 15px rgba(34, 211, 238, 0.3);
+    background: rgba(35, 45, 65, 0.9);
+    border-color: #38BDF8;
+    color: #7DD3FC;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
     transform: translateY(-1px);
 }
 
 .pagination .page-item.active .page-link {
-    background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%);
-    border-color: #22D3EE;
-    color: #0B0F19;
-    font-weight: 600;
-    box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+    background: linear-gradient(135deg, #38BDF8 0%, #0EA5E9 100%);
+    border-color: #38BDF8;
+    color: #0a0e17;
+    font-weight: 700;
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.6);
     z-index: 3;
 }
 
 .pagination .page-item.disabled .page-link {
-    color: #64748B;
+    color: #6B7280;
     pointer-events: none;
-    background: rgba(15, 23, 42, 0.3);
+    background: rgba(20, 30, 50, 0.4);
     border-color: rgba(255, 255, 255, 0.05);
 }
 
@@ -129,8 +133,8 @@ body {
 }
 
 .table tbody tr:hover {
-    background: rgba(34, 211, 238, 0.08);
-    box-shadow: inset 0 0 30px rgba(34, 211, 238, 0.05);
+    background: rgba(56, 189, 248, 0.1);
+    box-shadow: inset 0 0 40px rgba(56, 189, 248, 0.08);
 }
 
 /* Animations */
@@ -156,7 +160,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(11, 15, 25, 0.8);
+    background-color: rgba(10, 14, 23, 0.85);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -171,19 +175,19 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: #0B0F19;
+    background: #0a0e17;
     border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, rgba(34, 211, 238, 0.5), rgba(6, 182, 212, 0.5));
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.6), rgba(14, 165, 233, 0.6));
     border-radius: 5px;
-    border: 2px solid #0B0F19;
+    border: 2px solid #0a0e17;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, rgba(34, 211, 238, 0.8), rgba(6, 182, 212, 0.8));
-    box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.9), rgba(14, 165, 233, 0.9));
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
 }
 
 /* 上传标记按钮 - Enhanced */
@@ -191,8 +195,8 @@ body {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    border: 2px solid rgba(34, 211, 238, 0.3);
-    background: rgba(15, 23, 42, 0.6);
+    border: 2px solid rgba(56, 189, 248, 0.4);
+    background: rgba(20, 30, 50, 0.7);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -204,16 +208,16 @@ body {
 }
 
 .upload-check-btn:hover {
-    border-color: #22D3EE;
-    box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+    border-color: #38BDF8;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
     transform: scale(1.15);
 }
 
 .upload-check-btn.uploaded {
-    background: rgba(16, 185, 129, 0.3);
-    border-color: #10B981;
-    color: #34D399;
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+    background: rgba(34, 197, 94, 0.35);
+    border-color: #22C55E;
+    color: #4ADE80;
+    box-shadow: 0 0 25px rgba(34, 197, 94, 0.6);
 }
 
 .upload-check-btn.uploaded::before {
@@ -226,7 +230,7 @@ body {
     content: "\F26E"; /* Bootstrap Icons circle */
     font-family: "bootstrap-icons";
     font-size: 14px;
-    color: #64748B;
+    color: #6B7280;
 }
 
 .upload-check-btn.loading::before {
@@ -238,7 +242,7 @@ body {
     border-right-color: transparent;
     border-radius: 50%;
     animation: spinner-border 0.75s linear infinite;
-    color: #22D3EE;
+    color: #38BDF8;
     margin: 0;
 }
 
@@ -250,13 +254,13 @@ body {
 
 .upload-check-btn.loading {
     pointer-events: none;
-    box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
 }
 
 /* 今日更新列表式布局 - Enhanced */
 .episode-list-row .card {
-    border-left: 4px solid #22D3EE;
-    box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
+    border-left: 4px solid #38BDF8;
+    box-shadow: 0 0 25px rgba(56, 189, 248, 0.15);
 }
 
 .episode-list-row .show-header {
@@ -264,20 +268,20 @@ body {
     justify-content: space-between;
     align-items: center;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+    border-bottom: 1px solid rgba(56, 189, 248, 0.25);
     margin-bottom: 0.75rem;
 }
 
 .episode-list-row .show-name {
     margin: 0;
     font-size: 1.1rem;
-    font-weight: 600;
-    color: #F8FAFC;
+    font-weight: 700;
+    color: #FFFFFF;
 }
 
 .episode-list-row .show-date {
     font-size: 0.9rem;
-    color: #94A3B8;
+    color: #A5B4FC;
 }
 
 .episode-list-row .episodes-list {
@@ -297,18 +301,62 @@ body {
 }
 
 .episode-list-row .episode-row:hover {
-    background: rgba(34, 211, 238, 0.1);
-    box-shadow: 0 0 15px rgba(34, 211, 238, 0.1);
+    background: rgba(56, 189, 248, 0.12);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
 }
 
 .episode-list-row .episode-code {
     font-family: monospace;
-    font-weight: 600;
-    color: #22D3EE;
+    font-weight: 700;
+    color: #38BDF8;
     font-size: 0.95rem;
 }
 
 .episode-list-row .episode-name {
-    color: #E2E8F0;
+    color: #E0E7FF;
     font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Text contrast utilities */
+.text-muted {
+    color: #A5B4FC !important;
+    font-weight: 500;
+}
+
+/* Ensure table text is readable */
+.table td,
+.table th {
+    color: #FFFFFF;
+    font-weight: 500;
+}
+
+/* Form elements */
+.form-control {
+    color: #FFFFFF;
+    font-weight: 500;
+}
+
+.form-control::placeholder {
+    color: #A5B4FC;
+}
+
+/* Card titles and text */
+.card-title {
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+.card-text {
+    color: #E0E7FF;
+}
+
+/* Links */
+a {
+    color: #38BDF8;
+    font-weight: 600;
+}
+
+a:hover {
+    color: #7DD3FC;
 }
