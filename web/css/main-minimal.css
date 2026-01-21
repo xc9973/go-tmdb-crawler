@@ -1,0 +1,513 @@
+/* ========================================
+   TMDB Crawler - Minimal CSS
+   极简扁平版本 - 去除复杂视觉效果
+   ======================================== */
+
+/* CSS Variables */
+:root {
+    --primary: #3B82F6;
+    --primary-hover: #2563EB;
+    --success: #22C55E;
+    --danger: #EF4444;
+    --warning: #F59E0B;
+
+    --bg: #0F172A;
+    --bg-card: #1E293B;
+    --bg-hover: #334155;
+
+    --text: #E2E8F0;
+    --text-muted: #94A3B8;
+    --border: #334155;
+
+    --radius: 6px;
+}
+
+/* Base */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+/* ========================================
+   Layout
+   ======================================== */
+
+.container-fluid {
+    width: 100%;
+    padding: 0 1rem;
+    margin: 0 auto;
+    max-width: 1400px;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -0.5rem;
+}
+
+.col, .col-6, .col-12, .col-md-3, .col-md-6 {
+    padding: 0 0.5rem;
+    flex: 1;
+}
+
+.col-6 { flex: 0 0 50%; }
+.col-12 { flex: 0 0 100%; }
+
+@media (min-width: 768px) {
+    .col-md-3 { flex: 0 0 25%; }
+    .col-md-6 { flex: 0 0 50%; }
+}
+
+/* Utilities */
+.mt-3 { margin-top: 1rem; }
+.mt-4 { margin-top: 1.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 1rem; }
+.mb-4 { margin-bottom: 1.5rem; }
+.my-5 { margin-top: 3rem; margin-bottom: 3rem; }
+.p-0 { padding: 0; }
+.p-3 { padding: 1rem; }
+.p-4 { padding: 1.5rem; }
+.g-3 > * { padding: 0.5rem; }
+.gap-2 { gap: 0.5rem; }
+.d-flex { display: flex; }
+.text-center { text-align: center; }
+.w-100 { width: 100%; }
+.flex-wrap { flex-wrap: wrap; }
+.align-items-center { align-items: center; }
+.justify-content-between { justify-content: space-between; }
+.justify-content-center { justify-content: center; }
+
+/* ========================================
+   Navbar
+   ======================================== */
+
+.navbar {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+}
+
+.navbar .container-fluid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.navbar-brand {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.navbar-nav {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0.25rem;
+}
+
+.nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: var(--primary);
+    background: var(--bg-hover);
+}
+
+.navbar-toggler { display: none; }
+@media (max-width: 768px) {
+    .navbar-toggler { display: block; background: none; border: none; color: var(--text); cursor: pointer; }
+    .navbar-collapse { display: none; width: 100%; margin-top: 0.5rem; }
+    .navbar-collapse.show { display: block; }
+    .navbar-nav { flex-direction: column; }
+}
+
+/* ========================================
+   Card
+   ======================================== */
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.card-body { padding: 1rem; }
+.card-title { margin: 0 0 0.5rem; font-size: 1.1rem; font-weight: 700; }
+.card-text { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+
+/* ========================================
+   Buttons
+   ======================================== */
+
+.btn, .glass-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn:hover, .glass-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary);
+}
+
+.btn-primary, .glass-btn-primary {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.btn-primary:hover, .glass-btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.btn-success, .glass-btn-success { background: var(--success); color: white; border-color: var(--success); }
+.btn-danger, .glass-btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+.btn-warning, .glass-btn-warning { background: var(--warning); color: white; border-color: var(--warning); }
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+}
+
+/* ========================================
+   Forms
+   ======================================== */
+
+.form-control, .glass-input, .glass-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.form-control:focus, .glass-input:focus, .glass-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.form-control::placeholder, .glass-input::placeholder {
+    color: var(--text-muted);
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.form-text { font-size: 0.8rem; color: var(--text-muted); }
+
+.input-group {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.input-group-text {
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    border-right: 1px solid var(--border);
+}
+
+.input-group .form-control,
+.input-group .glass-input {
+    border: none;
+    flex: 1;
+}
+
+/* ========================================
+   Table
+   ======================================== */
+
+.table-responsive { overflow-x: auto; }
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table thead {
+    background: var(--bg-hover);
+    border-bottom: 1px solid var(--border);
+}
+
+.table th {
+    padding: 0.75rem 0.5rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.table td {
+    padding: 0.75rem 0.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+.table tbody tr:hover { background: var(--bg-hover); }
+
+/* ========================================
+   Stats
+   ======================================== */
+
+.stats-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+}
+
+.stats-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.stats-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+/* ========================================
+   Badges
+   ======================================== */
+
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.badge-returning { background: rgba(34, 197, 94, 0.2); color: #4ADE80; }
+.badge-ended { background: rgba(107, 114, 128, 0.2); color: #9CA3AF; }
+.badge-canceled { background: rgba(239, 68, 68, 0.2); color: #F87171; }
+
+/* ========================================
+   Pagination
+   ======================================== */
+
+.pagination {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: center;
+    list-style: none;
+    margin: 0;
+    padding: 1rem 0;
+}
+
+.page-link {
+    padding: 0.4rem 0.75rem;
+    color: var(--text);
+    text-decoration: none;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+}
+
+.page-link:hover, .page-link.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+/* ========================================
+   Modal
+   ======================================== */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show { display: flex; }
+
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.modal-dialog {
+    position: relative;
+    width: 90%;
+    max-width: 500px;
+    z-index: 1;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-title { margin: 0; font-size: 1rem; font-weight: 700; }
+.modal-body { padding: 1rem; }
+.modal-footer {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+/* ========================================
+   Theme Toggle
+   ======================================== */
+
+.theme-toggle {
+    width: 44px;
+    height: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative;
+}
+
+.theme-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: var(--primary);
+    border-radius: 50%;
+}
+
+[data-theme="light"] .theme-toggle::after {
+    left: calc(100% - 20px);
+}
+
+[data-theme="light"] { --bg: #F8FAFC; --bg-card: #FFFFFF; --text: #1E293B; --text-muted: #64748B; --border: #E2E8F0; }
+
+/* ========================================
+   Utilities
+   ======================================== */
+
+.text-primary { color: var(--primary); }
+.text-muted { color: var(--text-muted); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.cursor-pointer { cursor: pointer; }
+.bg-transparent { background: transparent; }
+.border-0 { border: none; }
+.position-fixed { position: fixed; }
+.bottom-0 { bottom: 0; }
+.end-0 { right: 0; }
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+/* ========================================
+   Scrollbar
+   ======================================== */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ========================================
+   Spinner
+   ======================================== */
+
+.spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========================================
+   Toast
+   ======================================== */
+
+.toast {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.toast-success { border-left: 3px solid var(--success); }
+.toast-error { border-left: 3px solid var(--danger); }
+
+.toast-container {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 1060;
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+
+@media (max-width: 768px) {
+    .table th, .table td { padding: 0.5rem 0.3rem; font-size: 0.8rem; }
+    .stats-value { font-size: 1.4rem; }
+    .modal-dialog { width: 95%; }
+}
