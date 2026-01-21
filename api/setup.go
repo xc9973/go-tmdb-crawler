@@ -105,7 +105,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	// 初始化认证处理器
 	authHandler := NewAuthHandler(authService, middleware.GetAdminAuth())
 
-	telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
+	telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.ShortName, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
 	publisher := services.NewPublisherService(telegraph, showRepo, episodeRepo, telegraphPostRepo, timezoneHelper)
 	tmdb := services.MustTMDBService(cfg.TMDB.APIKey, cfg.TMDB.BaseURL, cfg.TMDB.Language)
 	crawler := services.NewCrawlerService(tmdb, showRepo, episodeRepo, crawlLogRepo, crawlTaskRepo)

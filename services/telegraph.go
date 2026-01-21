@@ -13,20 +13,22 @@ import (
 
 // TelegraphService handles Telegraph API operations
 type TelegraphService struct {
-	apiURL     string
-	shortName  string
-	authorName string
-	authorURL  string
-	httpClient *http.Client
+	apiURL      string
+	accessToken string
+	shortName   string
+	authorName  string
+	authorURL   string
+	httpClient  *http.Client
 }
 
 // NewTelegraphService creates a new Telegraph service instance
-func NewTelegraphService(shortName, authorName, authorURL string) *TelegraphService {
+func NewTelegraphService(accessToken, shortName, authorName, authorURL string) *TelegraphService {
 	return &TelegraphService{
-		apiURL:     "https://api.telegra.ph",
-		shortName:  shortName,
-		authorName: authorName,
-		authorURL:  authorURL,
+		apiURL:      "https://api.telegra.ph",
+		accessToken: accessToken,
+		shortName:   shortName,
+		authorName:  authorName,
+		authorURL:   authorURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -211,7 +213,7 @@ func (s *TelegraphService) doRequest(method string, data interface{}) ([]byte, e
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/%s", s.apiURL, method)
+	url := fmt.Sprintf("%s/%s?access_token=%s", s.apiURL, method, s.accessToken)
 	resp, err := s.httpClient.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)

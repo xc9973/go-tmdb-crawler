@@ -51,7 +51,7 @@ var schedulerCmd = &cobra.Command{
 		logger := utils.NewLogger(cfg.App.LogLevel, cfg.Paths.Log)
 		tmdb := services.MustTMDBService(cfg.TMDB.APIKey, cfg.TMDB.BaseURL, cfg.TMDB.Language)
 		crawler := services.NewCrawlerService(tmdb, showRepo, episodeRepo, crawlLogRepo, crawlTaskRepo)
-		telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
+		telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.ShortName, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
 		publisher := services.NewPublisherService(telegraph, showRepo, episodeRepo, telegraphPostRepo, nil)
 
 		// Initialize scheduler
@@ -112,7 +112,7 @@ var schedulerRunOnceCmd = &cobra.Command{
 		// Initialize services
 		tmdb := services.MustTMDBService(cfg.TMDB.APIKey, cfg.TMDB.BaseURL, cfg.TMDB.Language)
 		crawler := services.NewCrawlerService(tmdb, showRepo, episodeRepo, crawlLogRepo, crawlTaskRepo)
-		telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
+		telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.ShortName, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
 		publisher := services.NewPublisherService(telegraph, showRepo, episodeRepo, telegraphPostRepo, nil)
 
 		// Run crawl job

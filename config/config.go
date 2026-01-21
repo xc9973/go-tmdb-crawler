@@ -51,6 +51,7 @@ type TMDBConfig struct {
 // TelegraphConfig holds Telegraph configuration
 type TelegraphConfig struct {
 	Token      string
+	ShortName  string
 	AuthorName string
 	AuthorURL  string
 }
@@ -124,6 +125,7 @@ func Load() (*Config, error) {
 		},
 		Telegraph: TelegraphConfig{
 			Token:      getEnv("TELEGRAPH_TOKEN", ""),
+			ShortName:  getEnv("TELEGRAPH_SHORT_NAME", "tmdb_crawler"),
 			AuthorName: getEnv("TELEGRAPH_AUTHOR_NAME", "剧集更新助手"),
 			AuthorURL:  getEnv("TELEGRAPH_AUTHOR_URL", ""),
 		},
