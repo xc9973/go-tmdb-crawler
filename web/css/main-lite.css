@@ -13,13 +13,13 @@
 
     /* Background */
     --bg-base: #0a0e17;
-    --bg-card: rgba(20, 30, 50, 0.7);
-    --bg-card-hover: rgba(35, 45, 65, 0.85);
+    --bg-card: rgba(20, 30, 50, 0.85);
+    --bg-card-hover: rgba(35, 45, 65, 0.95);
 
     /* Text */
-    --text-primary: #FFFFFF;
-    --text-secondary: #E0E7FF;
-    --text-muted: #A5B4FC;
+    --text-primary: #E2E8F0;
+    --text-secondary: #CBD5E1;
+    --text-muted: #94A3B8;
 
     /* Effects */
     --border: rgba(56, 189, 248, 0.3);
@@ -118,7 +118,7 @@ body::before {
     position: sticky;
     top: 0;
     z-index: 1000;
-    background: rgba(15, 20, 35, 0.95);
+    background: rgba(15, 20, 35, 0.98);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
     padding: 0.75rem 1rem;
@@ -258,8 +258,8 @@ body::before {
     width: 100%;
     padding: 0.6rem 0.8rem;
     font-size: 0.95rem;
-    color: var(--text-primary);
-    background: var(--bg-card);
+    color: #E2E8F0;
+    background: rgba(20, 30, 50, 0.9);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     transition: var(--transition);
