@@ -35,9 +35,10 @@ class TodayPage {
             this.loadWeekUpdates();
         });
 
-        document.getElementById('monthBtn').addEventListener('click', () => {
-            this.loadMonthUpdates();
-        });
+        // monthBtn 暂未在 HTML 中定义，如需要可添加
+        // document.getElementById('monthBtn').addEventListener('click', () => {
+        //     this.loadMonthUpdates();
+        // });
 
         // 操作按钮
         document.getElementById('refreshBtn').addEventListener('click', () => {
@@ -194,11 +195,12 @@ class TodayPage {
     updateStats() {
         const totalShows = this.shows.length;
         const totalEpisodes = this.shows.reduce((sum, show) => sum + (show.episode_count || 0), 0);
-        
-        document.getElementById('totalCount').textContent = totalShows;
-        document.getElementById('newCount').textContent = totalEpisodes;
-        document.getElementById('returningCount').textContent = totalShows;
-        document.getElementById('endedCount').textContent = totalEpisodes;
+        const newShows = this.shows.filter(s => s.show_new).length;
+
+        document.getElementById('totalCount').textContent = totalEpisodes;
+        document.getElementById('newCount').textContent = newShows;
+        document.getElementById('showCount').textContent = totalShows;
+        document.getElementById('publishStatus').textContent = '未发布';
     }
 
     selectDate(type) {
