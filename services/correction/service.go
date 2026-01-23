@@ -32,13 +32,14 @@ func NewService(
 	episodeRepo repositories.EpisodeRepository,
 	taskRepo repositories.CrawlTaskRepository,
 	crawler Crawler,
+	location *time.Location,
 ) *Service {
 	return &Service{
 		showRepo:    showRepo,
 		episodeRepo: episodeRepo,
 		taskRepo:    taskRepo,
 		crawler:     crawler,
-		detector:    NewDetector(),
+		detector:    NewDetector(location),
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/xc9973/go-tmdb-crawler/config"
@@ -48,13 +49,19 @@ var schedulerCmd = &cobra.Command{
 		crawlTaskRepo := repositories.NewCrawlTaskRepository(db)
 		telegraphPostRepo := repositories.NewTelegraphPostRepository(db)
 
+		// Load timezone
+		location, err := time.LoadLocation(cfg.Timezone.Default)
+		if err != nil {
+			log.Fatalf("Failed to load timezone '%s': %v", cfg.Timezone.Default, err)
+		}
+
 		// Initialize services
 		logger := utils.NewLogger(cfg.App.LogLevel, cfg.Paths.Log)
 		tmdb := services.MustTMDBService(cfg.TMDB.APIKey, cfg.TMDB.BaseURL, cfg.TMDB.Language)
 		crawler := services.NewCrawlerService(tmdb, showRepo, episodeRepo, crawlLogRepo, crawlTaskRepo)
 		telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.ShortName, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
 		publisher := services.NewPublisherService(telegraph, showRepo, episodeRepo, telegraphPostRepo, nil)
-		correctionService := correction.NewService(showRepo, episodeRepo, crawlTaskRepo, crawler)
+		correctionService := correction.NewService(showRepo, episodeRepo, crawlTaskRepo, crawler, location)
 
 		// Initialize scheduler
 		scheduler := services.NewScheduler(crawler, publisher, correctionService, logger)

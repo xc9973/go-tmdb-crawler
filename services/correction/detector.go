@@ -17,12 +17,14 @@ type StaleShowInfo struct {
 
 // Detector analyzes shows for staleness
 type Detector struct {
-	// Could add configuration here later
+	location *time.Location
 }
 
-// NewDetector creates a new detector instance
-func NewDetector() *Detector {
-	return &Detector{}
+// NewDetector creates a new detector instance with timezone
+func NewDetector(location *time.Location) *Detector {
+	return &Detector{
+		location: location,
+	}
 }
 
 // DetectStale analyzes a single show to determine if it's stale
@@ -63,7 +65,10 @@ func (d *Detector) DetectStale(
 
 	// Get latest episode date
 	latestDate := lastN[len(lastN)-1]
-	daysSinceLatest := int(time.Since(latestDate).Hours() / 24)
+
+	// Calculate days since latest episode using configured timezone
+	now := time.Now().In(d.location)
+	daysSinceLatest := int(now.Sub(latestDate).Hours() / 24)
 
 	// Check if stale
 	if daysSinceLatest <= threshold {

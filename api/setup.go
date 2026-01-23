@@ -116,7 +116,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	taskManager := services.NewTaskManager(crawlTaskRepo, crawler)
 
 	// Initialize correction service (needed by scheduler)
-	correctionService := correction.NewService(showRepo, episodeRepo, crawlTaskRepo, crawler)
+	correctionService := correction.NewService(showRepo, episodeRepo, crawlTaskRepo, crawler, location)
 
 	// Initialize scheduler
 	logger := utils.NewLogger(cfg.App.LogLevel, cfg.Paths.Log)

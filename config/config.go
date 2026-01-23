@@ -132,7 +132,7 @@ func Load() (*Config, error) {
 		Scheduler: SchedulerConfig{
 			Enabled: getEnvAsBool("ENABLE_SCHEDULER", true),
 			Cron:    getEnv("DAILY_CRON", "0 8 * * *"),
-			TZ:      getEnv("SCHEDULER_TZ", "UTC"),
+			TZ:      getEnv("SCHEDULER_TZ", "Asia/Shanghai"),
 		},
 		Paths: PathsConfig{
 			Web:  getEnv("WEB_DIR", "./web"),
@@ -145,7 +145,7 @@ func Load() (*Config, error) {
 			AllowedHeaders: getEnv("CORS_ALLOWED_HEADERS", "Content-Type,Authorization,X-Admin-API-Key"),
 		},
 		Timezone: TimezoneConfig{
-			Default: getEnv("DEFAULT_TIMEZONE", "UTC"),
+			Default: getEnv("DEFAULT_TIMEZONE", "Asia/Shanghai"),
 		},
 		Auth: AuthConfig{
 			SecretKey:   getEnv("ADMIN_API_KEY", ""),

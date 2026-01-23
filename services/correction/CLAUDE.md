@@ -7,7 +7,19 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #3865 | 4:20 PM | 🔴 | 修复了createCorrectionTask不更新show数据库字段的缺陷 | ~148 |
-| #3866 | " | 🔴 | 修复了剧集日期未排序可能导致模式分析错误的问题 | ~110 |
-| #3867 | " | 🔴 | 为StaleShowInfo结构体添加了JSON序列化标签 | ~129 |
+| #3882 | 4:38 PM | ✅ | Correction Service Constructor Accepts Timezone Location | ~144 |
+| #3877 | 4:36 PM | 🔵 | Correction Service Uses time.Since for Interval Calculations | ~176 |
+| #3861 | 4:12 PM | 🔴 | Code Review Issues Fixed and Build Verified | ~175 |
+| #3858 | 4:11 PM | 🔄 | Correction Service Decoupled with Crawler Interface | ~165 |
+| #3856 | 4:10 PM | 🟣 | createCorrectionTask Updates Show with Stale Detection Metadata | ~166 |
+| #3855 | " | 🟣 | Correction Service Added Result Caching with Thread-Safe Access | ~164 |
+| #3849 | 4:07 PM | 🟣 | Stale Show Detector Analyzes Episode Air Date Patterns | ~158 |
+| #3848 | " | 🟣 | Correction Service Orchestrates Stale Show Detection and Refresh | ~164 |
+| #3844 | 2:44 PM | 🟣 | Intelligent Show Correction System Implementation Complete | ~567 |
+| #3830 | 2:32 PM | 🟣 | Correction Service Implemented in service.go | ~459 |
+| #3827 | 2:30 PM | 🔵 | Pattern Implementation Verified Complete | ~328 |
+| #3826 | 2:29 PM | 🟣 | Stale Show Detector Implemented with Priority-Based Scoring | ~389 |
+| #3824 | " | 🔵 | Detector File Verified for Implementation | ~220 |
+| #3821 | 2:28 PM | 🔵 | Pattern File Verified for Implementation | ~196 |
+| #3820 | " | 🟣 | Update Pattern Calculation Algorithm Implemented | ~395 |
 </claude-mem-context>

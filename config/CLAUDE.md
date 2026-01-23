@@ -13,5 +13,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #3876 | 4:36 PM | ✅ | Default Timezone Changed from UTC to Asia/Shanghai | ~138 |
 | #3844 | 2:44 PM | 🟣 | Intelligent Show Correction System Implementation Complete | ~567 |
 </claude-mem-context>
