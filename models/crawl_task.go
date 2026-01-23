@@ -36,6 +36,7 @@ func (c *CrawlTask) Validate() error {
 		"crawl_by_id":     true,
 		"crawl_by_status": true,
 		"daily_job":       true,
+		"correction":      true,
 	}
 	if !validTypes[c.Type] {
 		return fmt.Errorf("invalid task type: %s", c.Type)

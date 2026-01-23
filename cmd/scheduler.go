@@ -11,6 +11,7 @@ import (
 	"github.com/xc9973/go-tmdb-crawler/config"
 	"github.com/xc9973/go-tmdb-crawler/repositories"
 	"github.com/xc9973/go-tmdb-crawler/services"
+	"github.com/xc9973/go-tmdb-crawler/services/correction"
 	"github.com/xc9973/go-tmdb-crawler/utils"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -53,9 +54,10 @@ var schedulerCmd = &cobra.Command{
 		crawler := services.NewCrawlerService(tmdb, showRepo, episodeRepo, crawlLogRepo, crawlTaskRepo)
 		telegraph := services.NewTelegraphService(cfg.Telegraph.Token, cfg.Telegraph.ShortName, cfg.Telegraph.AuthorName, cfg.Telegraph.AuthorURL)
 		publisher := services.NewPublisherService(telegraph, showRepo, episodeRepo, telegraphPostRepo, nil)
+		correctionService := correction.NewService(showRepo, episodeRepo, crawlTaskRepo, crawler)
 
 		// Initialize scheduler
-		scheduler := services.NewScheduler(crawler, publisher, logger)
+		scheduler := services.NewScheduler(crawler, publisher, correctionService, logger)
 
 		// Start scheduler
 		log.Println("Starting scheduler service...")

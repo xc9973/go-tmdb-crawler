@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/robfig/cron/v3"
+	"github.com/xc9973/go-tmdb-crawler/services/correction"
 	"github.com/xc9973/go-tmdb-crawler/utils"
 )
 
@@ -14,6 +15,7 @@ type Scheduler struct {
 	cron            *cron.Cron
 	crawler         *CrawlerService
 	publisher       *PublisherService
+	correction      *correction.Service
 	logger          *utils.Logger
 	mu              sync.RWMutex
 	running         bool
@@ -21,10 +23,12 @@ type Scheduler struct {
 	lastPublishTime time.Time
 
 	// Concurrency control
-	crawlJobRunning   bool
-	publishJobRunning bool
-	crawlJobMutex     sync.Mutex
-	publishJobMutex   sync.Mutex
+	crawlJobRunning     bool
+	publishJobRunning   bool
+	correctionJobRunning bool
+	crawlJobMutex       sync.Mutex
+	publishJobMutex     sync.Mutex
+	correctionJobMutex  sync.Mutex
 
 	// Timeout settings
 	crawlTimeout   time.Duration
@@ -35,12 +39,14 @@ type Scheduler struct {
 func NewScheduler(
 	crawler *CrawlerService,
 	publisher *PublisherService,
+	correction *correction.Service,
 	logger *utils.Logger,
 ) *Scheduler {
 	return &Scheduler{
 		cron:           cron.New(cron.WithSeconds()),
 		crawler:        crawler,
 		publisher:      publisher,
+		correction:     correction,
 		logger:         logger,
 		running:        false,
 		crawlTimeout:   30 * time.Minute, // Default crawl timeout
@@ -74,6 +80,10 @@ func (s *Scheduler) Start() error {
 
 	if _, err := s.cron.AddFunc("0 0 7 * * 1", s.weeklyPublishJob); err != nil {
 		return fmt.Errorf("failed to add weekly publish job: %w", err)
+	}
+
+	if _, err := s.cron.AddFunc("0 0 2 * * *", s.dailyCorrectionJob); err != nil {
+		return fmt.Errorf("failed to add daily correction job: %w", err)
 	}
 
 	s.cron.Start()
@@ -259,17 +269,40 @@ func (s *Scheduler) RunPublishNow() (*PublishResult, error) {
 	return result, nil
 }
 
+// dailyCorrectionJob performs daily stale show detection
+func (s *Scheduler) dailyCorrectionJob() {
+	// Check if job is already running
+	if !s.correctionJobMutex.TryLock() {
+		s.logger.Warn("Daily correction job already running, skipping")
+		return
+	}
+	defer s.correctionJobMutex.Unlock()
+
+	s.logger.Info("Starting daily correction job...")
+	startTime := time.Now()
+
+	result, err := s.correction.RunDetection()
+	if err != nil {
+		s.logger.Errorf("Daily correction job failed: %v", err)
+	} else {
+		duration := time.Since(startTime)
+		s.logger.Infof("Daily correction job completed: %d stale shows found, %d tasks created in %v",
+			result.StaleShowsFound, result.TasksCreated, duration)
+	}
+}
+
 // GetStatus returns the scheduler status
 func (s *Scheduler) GetStatus() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"running":             s.running,
-		"last_crawl_time":     s.lastCrawlTime,
-		"last_publish_time":   s.lastPublishTime,
-		"crawl_job_running":   s.crawlJobRunning,
-		"publish_job_running": s.publishJobRunning,
+		"running":              s.running,
+		"last_crawl_time":      s.lastCrawlTime,
+		"last_publish_time":    s.lastPublishTime,
+		"crawl_job_running":    s.crawlJobRunning,
+		"publish_job_running":  s.publishJobRunning,
+		"correction_job_running": s.correctionJobRunning,
 	}
 
 	if !s.lastCrawlTime.IsZero() {

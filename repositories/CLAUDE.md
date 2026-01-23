@@ -16,6 +16,25 @@
 | #3384 | 5:10 PM | 🔴 | Fixed episode upsert reliability during show refresh | ~386 |
 | #3383 | 5:09 PM | 🔄 | Refactored episode batch upsert strategy from DELETE+INSERT to individual Save operations | ~456 |
 | #3382 | 5:07 PM | 🔴 | Episode batch upsert strategy changed to DELETE + INSERT | ~219 |
-| #3381 | 5:01 PM | 🔴 | Fixed episode data not updating during show refresh operations | ~337 |
-| #3380 | 5:00 PM | 🟣 | Added upsert capability to episode batch creation for data refresh scenarios | ~413 |
+
+### Jan 21, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #3433 | 3:50 PM | 🔵 | EpisodeRepository Implements Transactional Batch Storage | ~334 |
+
+### Jan 22, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #3609 | 5:21 PM | 🔴 | 今日更新页面完整修复并推送到GitHub | ~167 |
+| #3544 | 4:54 PM | 🔵 | GetTodayUpdatesWithUploadStatus实现分析 | ~137 |
+| #3542 | 4:53 PM | 🔵 | 后端API处理函数定位 | ~121 |
+
+### Jan 23, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #3844 | 2:44 PM | 🟣 | Intelligent Show Correction System Implementation Complete | ~567 |
+| #3792 | 2:21 PM | 🔵 | Episode Repository Provides Query Foundation for Correction System | ~376 |
 </claude-mem-context>

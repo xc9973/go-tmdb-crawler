@@ -415,6 +415,50 @@ class APIClient {
     async getBackupStatus() {
         return this.get('/backup/status');
     }
+
+    // ========== Correction API ==========
+
+    /**
+     * Get correction status
+     */
+    async getCorrectionStatus() {
+        return this.get('/correction/status');
+    }
+
+    /**
+     * Run correction detection now
+     */
+    async runCorrectionNow() {
+        return this.post('/correction/run-now');
+    }
+
+    /**
+     * Get stale shows list
+     */
+    async getStaleShows() {
+        return this.get('/correction/stale');
+    }
+
+    /**
+     * Refresh a stale show
+     */
+    async refreshStaleShow(id) {
+        return this.post(`/correction/${id}/refresh`);
+    }
+
+    /**
+     * Clear stale flag from a show
+     */
+    async clearStaleFlag(id) {
+        return this.delete(`/correction/${id}/stale`);
+    }
+
+    /**
+     * Set custom threshold for a show
+     */
+    async setCorrectionThreshold(id, threshold) {
+        return this.put(`/correction/${id}/threshold`, { threshold });
+    }
 }
 
 // 创建全局API客户端实例

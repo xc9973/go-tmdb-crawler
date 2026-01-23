@@ -32,6 +32,11 @@ type Show struct {
 	CustomStatus     string     `gorm:"size:50" json:"custom_status"`
 	Notes            string     `gorm:"type:text" json:"notes"`
 
+	// Correction fields
+	RefreshThreshold      int        `gorm:"default:0" json:"refresh_threshold"`
+	StaleDetectedAt      *time.Time `gorm:"index:idx_stale_detected_at" json:"stale_detected_at"`
+	LastCorrectionResult string     `gorm:"size:50" json:"last_correction_result"`
+
 	// Timestamps
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`

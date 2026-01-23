@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -364,13 +365,9 @@ func (api *ShowAPI) GetShowEpisodes(c *gin.Context) {
 	}
 
 	// Sort by season number
-	for i := 0; i < len(result); i++ {
-		for j := i + 1; j < len(result); j++ {
-			if result[i].SeasonNumber > result[j].SeasonNumber {
-				result[i], result[j] = result[j], result[i]
-			}
-		}
-	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].SeasonNumber < result[j].SeasonNumber
+	})
 
 	response = map[string]interface{}{
 		"show":    show,

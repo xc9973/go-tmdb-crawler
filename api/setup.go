@@ -13,6 +13,7 @@ import (
 	"github.com/xc9973/go-tmdb-crawler/repositories"
 	backupservice "github.com/xc9973/go-tmdb-crawler/services/backup"
 	"github.com/xc9973/go-tmdb-crawler/services"
+	"github.com/xc9973/go-tmdb-crawler/services/correction"
 	"github.com/xc9973/go-tmdb-crawler/utils"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -55,12 +56,15 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		webPages.StaticFile("/logs.html", cfg.Paths.Web+"/logs.html")
 		webPages.StaticFile("/show_detail.html", cfg.Paths.Web+"/show_detail.html")
 		webPages.StaticFile("/backup.html", cfg.Paths.Web+"/backup.html")
+		webPages.StaticFile("/correction.html", cfg.Paths.Web+"/correction.html")
 	}
 
 	// Initialize timezone helper
 	location, err := time.LoadLocation(cfg.Timezone.Default)
 	if err != nil {
-		log.Fatalf("Failed to load timezone location '%s': %v", cfg.Timezone.Default, err)
+		// Fallback to UTC if timezone is invalid, rather than crashing
+		log.Printf("Warning: Failed to load timezone '%s', falling back to UTC: %v", cfg.Timezone.Default, err)
+		location, _ = time.LoadLocation("UTC")
 	}
 	timezoneHelper := utils.NewTimezoneHelper(location)
 
@@ -111,15 +115,18 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	crawler := services.NewCrawlerService(tmdb, showRepo, episodeRepo, crawlLogRepo, crawlTaskRepo)
 	taskManager := services.NewTaskManager(crawlTaskRepo, crawler)
 
+	// Initialize correction service (needed by scheduler)
+	correctionService := correction.NewService(showRepo, episodeRepo, crawlTaskRepo, crawler)
+
 	// Initialize scheduler
 	logger := utils.NewLogger(cfg.App.LogLevel, cfg.Paths.Log)
-	scheduler := services.NewScheduler(crawler, publisher, logger)
+	scheduler := services.NewScheduler(crawler, publisher, correctionService, logger)
 
 	// Initialize cache service (after logger is available)
 	cacheService := services.NewMemoryCacheService(15*time.Minute, logger)
 
 	showAPI := NewShowAPI(showRepo, episodeRepo, crawler, cacheService)
-	crawlerAPI := NewCrawlerAPI(crawler, showRepo, crawlLogRepo, episodeRepo, taskManager)
+	crawlerAPI := NewCrawlerAPI(crawler, showRepo, crawlLogRepo, episodeRepo, taskManager, logger)
 	markdownService := services.NewMarkdownService(episodeRepo, showRepo)
 	markdownService.SetTimezoneHelper(timezoneHelper)
 	publishAPI := NewPublishAPI(publisher, markdownService)
@@ -129,6 +136,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	backupService := backupservice.NewService(db, showRepo, episodeRepo, crawlLogRepo, telegraphPostRepo)
 	backupAPI := NewBackupAPI(backupService)
 	uploadedEpisodeAPI := NewUploadedEpisodeAPI(episodeRepo, uploadedEpisodeRepo)
+
+	correctionAPI := NewCorrectionAPI(correctionService, showRepo)
 
 	// API routes
 	api := router.Group("/api/v1")
@@ -155,6 +164,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		// Crawler (只读状态)
 		api.GET("/crawler/status", crawlerAPI.GetHealthStatus)
 		api.GET("/crawler/search/tmdb", crawlerAPI.SearchTMDB)
+
+		// Correction (status endpoint is public)
+		api.GET("/correction/status", correctionAPI.GetStatus)
 	}
 
 	// 管理员路由 - 需要认证
@@ -207,6 +219,13 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		// Episode upload tracking (write operations - requires admin auth)
 		admin.POST("/episodes/:id/uploaded", uploadedEpisodeAPI.MarkUploaded)
 		admin.DELETE("/episodes/:id/uploaded", uploadedEpisodeAPI.UnmarkUploaded)
+
+		// Correction
+		admin.POST("/correction/run-now", correctionAPI.RunNow)
+		admin.GET("/correction/stale", correctionAPI.GetStaleShows)
+		admin.POST("/correction/:id/refresh", correctionAPI.RefreshShow)
+		admin.DELETE("/correction/:id/stale", correctionAPI.ClearStaleFlag)
+		admin.PUT("/correction/:id/threshold", correctionAPI.SetThreshold)
 	}
 
 	// Start scheduler if enabled

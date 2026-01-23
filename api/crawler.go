@@ -12,6 +12,7 @@ import (
 	"github.com/xc9973/go-tmdb-crawler/models"
 	"github.com/xc9973/go-tmdb-crawler/repositories"
 	"github.com/xc9973/go-tmdb-crawler/services"
+	"github.com/xc9973/go-tmdb-crawler/utils"
 	"gorm.io/gorm"
 )
 
@@ -22,6 +23,7 @@ type CrawlerAPI struct {
 	logRepo     repositories.CrawlLogRepository
 	episodeRepo repositories.EpisodeRepository
 	taskManager *services.TaskManager
+	logger      *utils.Logger
 }
 
 // NewCrawlerAPI creates a new crawler API instance
@@ -31,6 +33,7 @@ func NewCrawlerAPI(
 	logRepo repositories.CrawlLogRepository,
 	episodeRepo repositories.EpisodeRepository,
 	taskManager *services.TaskManager,
+	logger *utils.Logger,
 ) *CrawlerAPI {
 	return &CrawlerAPI{
 		crawler:     crawler,
@@ -38,6 +41,7 @@ func NewCrawlerAPI(
 		logRepo:     logRepo,
 		episodeRepo: episodeRepo,
 		taskManager: taskManager,
+		logger:      logger,
 	}
 }
 
@@ -108,23 +112,22 @@ func (api *CrawlerAPI) CrawlShow(c *gin.Context) {
 		return
 	}
 
-	// 添加日志
-	fmt.Printf("[CrawlShow] 开始爬取 TMDB ID: %d\n", tmdbID)
+	api.logger.Infof("[CrawlShow] 开始爬取 TMDB ID: %d", tmdbID)
 
 	if err := api.crawler.CrawlShow(tmdbID); err != nil {
-		fmt.Printf("[CrawlShow] 爬取失败: %v\n", err)
+		api.logger.Errorf("[CrawlShow] 爬取失败: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.InternalError(err.Error()))
 		return
 	}
 
 	show, err := api.showRepo.GetByTmdbID(tmdbID)
 	if err != nil {
-		fmt.Printf("[CrawlShow] 获取show失败: %v\n", err)
+		api.logger.Errorf("[CrawlShow] 获取show失败: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.InternalError("failed to load show after crawl"))
 		return
 	}
 
-	fmt.Printf("[CrawlShow] 爬取成功, show: %+v\n", show)
+	api.logger.Infof("[CrawlShow] 爬取成功: %s (TMDB ID: %d)", show.Name, show.TmdbID)
 	c.JSON(http.StatusOK, dto.SuccessWithMessage("Show crawled successfully", show))
 }
 
